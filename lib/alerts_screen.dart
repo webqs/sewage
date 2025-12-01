@@ -1,60 +1,106 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-class AlertsScreen extends StatelessWidget {
+class AlertsScreen extends StatefulWidget {
   const AlertsScreen({super.key});
 
   @override
+  State<AlertsScreen> createState() => _AlertsScreenState();
+}
+
+class _AlertsScreenState extends State<AlertsScreen> {
+  final supabase = Supabase.instance.client;
+
+  Future<List<Map<String, dynamic>>> fetchAlerts() async {
+    final response = await supabase
+        .from('alerts')
+        .select()
+        .order('created_at', ascending: false);
+
+    return List<Map<String, dynamic>>.from(response);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // A scrollable list is better for showing multiple alerts
-    return ListView(
-      padding: const EdgeInsets.all(16.0),
-      children: [
-        // Example of a Critical Alert Card
-        _buildAlertCard(
-          context,
-          title: 'CRITICAL: Major Blockage Detected',
-          unitId: 'Unit #102 - North Street',
-          timestamp: '2 mins ago',
-          icon: Icons.error,
-          iconColor: Colors.red.shade700,
-          isCritical: true,
-        ),
-        const SizedBox(height: 12),
-        // Example of a Warning Alert Card
-        _buildAlertCard(
-          context,
-          title: 'Warning: High Water Level',
-          unitId: 'Unit #105 - Central Park',
-          timestamp: '45 mins ago',
-          icon: Icons.warning_amber_rounded,
-          iconColor: Colors.orange.shade700,
-        ),
-        const SizedBox(height: 12),
-        // Example of an Info Alert Card
-        _buildAlertCard(
-          context,
-          title: 'Info: Routine Check Completed',
-          unitId: 'Unit #102 - North Street',
-          timestamp: '3 hours ago',
-          icon: Icons.check_circle_outline,
-          iconColor: Colors.green.shade700,
-        ),
-      ],
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: fetchAlerts(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError) {
+          return Center(
+            child: Text(
+              "Error loading alerts\n${snapshot.error}",
+              textAlign: TextAlign.center,
+            ),
+          );
+        }
+
+        final alerts = snapshot.data ?? [];
+
+        if (alerts.isEmpty) {
+          return const Center(
+            child: Text("No alerts found"),
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: alerts.length,
+          itemBuilder: (context, index) {
+            final alert = alerts[index];
+
+            return _buildAlertCard(
+              context,
+              title: alert['status'] ?? "Unknown",
+              unitId: alert['severity'] ?? "No severity",
+              timestamp: alert['created_at']?.toString() ?? "",
+              icon: _selectIcon(alert['severity']),
+              iconColor: _selectColor(alert['severity']),
+              isCritical: alert['severity'] == "critical",
+            );
+          },
+        );
+      },
     );
   }
 
-  // Helper widget to build a consistent alert card
+  IconData _selectIcon(String? severity) {
+    switch (severity?.toLowerCase()) {
+      case 'critical':
+        return Icons.error;
+      case 'warning':
+        return Icons.warning_amber_rounded;
+      default:
+        return Icons.info_outline;
+    }
+  }
+
+  Color _selectColor(String? severity) {
+    switch (severity?.toLowerCase()) {
+      case 'critical':
+        return Colors.red.shade700;
+      case 'warning':
+        return Colors.orange.shade700;
+      default:
+        return Colors.blue.shade700;
+    }
+  }
+
   Widget _buildAlertCard(
-    BuildContext context, {
-    required String title,
-    required String unitId,
-    required String timestamp,
-    required IconData icon,
-    required Color iconColor,
-    bool isCritical = false,
-  }) {
+      BuildContext context, {
+        required String title,
+        required String unitId,
+        required String timestamp,
+        required IconData icon,
+        required Color iconColor,
+        bool isCritical = false,
+      }) {
     return Card(
       elevation: 4,
+      margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
         side: BorderSide(
           color: isCritical ? Colors.red.shade700 : Colors.grey.shade300,
@@ -71,12 +117,10 @@ class AlertsScreen extends StatelessWidget {
             color: isCritical ? Colors.red.shade900 : Colors.black87,
           ),
         ),
-        subtitle: Text('$unitId\n$timestamp'),
+        subtitle: Text("$unitId\n$timestamp"),
         trailing: const Icon(Icons.arrow_forward_ios),
         isThreeLine: true,
-        onTap: () {
-          // Action to view alert details
-        },
+        onTap: () {},
       ),
     );
   }
