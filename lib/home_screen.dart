@@ -1,20 +1,17 @@
 import 'package:flutter/material.dart';
 
+import 'Profie.dart';
 import 'alerts_screen.dart';
 import 'history_screen.dart';
 import 'unit_info_screen.dart';
 
-// This can now be a StatelessWidget as it no longer manages internal state.
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
-  // Helper method to handle navigation to a new page
   void _navigateToPage(BuildContext context, Widget page, String title) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        // We build a new Scaffold for each page to give it a standard look
-        // with an AppBar and a back button.
         builder: (context) => Scaffold(
           appBar: AppBar(
             title: Text(title),
@@ -31,75 +28,96 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100], // Softer background color
+      backgroundColor: Colors.grey[100],
+
+      // 🔥 App Bar (Corrected)
+      appBar: AppBar(
+        title: const Text(
+          'Sewer Monitor Dashboard',
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
+        ),
+        backgroundColor: Colors.white,
+        elevation: 1,
+        foregroundColor: Colors.black87,
+
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12.0),
+            child: GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                );
+              },
+              child: const CircleAvatar(
+                radius: 18,
+                backgroundColor: Colors.grey,
+                child: Icon(Icons.person, color: Colors.white, size: 22),
+              ),
+            ),
+          ),
+        ],
+      ),
+
+      // 🔥 Body starts here (NO semicolon above!)
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            // 1. Title at the top of the column
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-              child: Text(
-                'Sewer Monitor Dashboard',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+            const SizedBox(height: 12),
+
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    _buildNavButton(
+                      icon: Icons.warning_amber_rounded,
+                      label: 'Alerts',
+                      onTap: () => _navigateToPage(
+                        context,
+                        const AlertsScreen(),
+                        'Alerts',
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    _buildNavButton(
+                      icon: Icons.info_outline,
+                      label: 'Unit Info',
+                      onTap: () => _navigateToPage(
+                        context,
+                        const UnitInfoScreen(),
+                        'Unit Info',
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    _buildNavButton(
+                      icon: Icons.history,
+                      label: 'Action & History',
+                      onTap: () => _navigateToPage(
+                        context,
+                        const HistoryScreen(),
+                        'Action & History',
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
 
-            // 2. Navigation controls now in a Column
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Column(
-                children: <Widget>[
-                  // Each button now calls the _navigateToPage method on tap
-                  _buildNavButton(
-                    icon: Icons.warning_amber_rounded,
-                    label: 'Alerts',
-                    onTap: () => _navigateToPage(
-                      context,
-                      const AlertsScreen(),
-                      'Alerts',
-                    ),
-                  ),
-                  const SizedBox(
-                    height: 12,
-                  ), // Vertical spacing between buttons
-                  _buildNavButton(
-                    icon: Icons.info_outline,
-                    label: 'Unit Info',
-                    onTap: () => _navigateToPage(
-                      context,
-                      const UnitInfoScreen(),
-                      'Unit Info',
-                    ),
-                  ),
-                  const SizedBox(
-                    height: 12,
-                  ), // Vertical spacing between buttons
-                  _buildNavButton(
-                    icon: Icons.history,
-                    label: 'Action & History',
-                    onTap: () => _navigateToPage(
-                      context,
-                      const HistoryScreen(),
-                      'Action & History',
-                    ),
-                  ),
-                ],
-              ),
-            ),
             const SizedBox(height: 20),
-            // The content area is no longer needed here.
           ],
         ),
       ),
     );
   }
 
-  // Helper widget to build each navigation button for the new column layout.
   Widget _buildNavButton({
     required IconData icon,
     required String label,
@@ -123,7 +141,6 @@ class HomeScreen extends StatelessWidget {
             ),
           ],
         ),
-        // A Row is used inside to place the icon and text side-by-side.
         child: Row(
           children: [
             Icon(icon, color: color, size: 28),

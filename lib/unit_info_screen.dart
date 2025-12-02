@@ -1,118 +1,156 @@
 import 'package:flutter/material.dart';
-
-// A simple data class to represent a sewer monitoring unit.
-class SewerUnit {
-  final String id;
-  final String location;
-  final String status;
-  final int batteryLevel;
-
-  const SewerUnit({
-    required this.id,
-    required this.location,
-    required this.status,
-    required this.batteryLevel,
-  });
-}
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:intl/intl.dart';
 
 class UnitInfoScreen extends StatelessWidget {
   const UnitInfoScreen({super.key});
 
-  // --- MOCK DATA: In a real app, this would come from a database or API ---
-  final List<SewerUnit> sewerUnits = const [
-    SewerUnit(
-      id: 'SM-102',
-      location: 'North Street & 5th Ave',
-      status: 'Critical Alert',
-      batteryLevel: 87,
-    ),
-    SewerUnit(
-      id: 'SM-105',
-      location: 'Central Park, Sector 3',
-      status: 'Active',
-      batteryLevel: 95,
-    ),
-    SewerUnit(
-      id: 'SM-108',
-      location: 'South Bridge Crossing',
-      status: 'Maintenance Required',
-      batteryLevel: 45,
-    ),
-    SewerUnit(
-      id: 'SM-112',
-      location: 'Industrial Area, Phase 2',
-      status: 'Offline',
-      batteryLevel: 0,
-    ),
-    SewerUnit(
-      id: 'SM-115',
-      location: 'Market Square',
-      status: 'Active',
-      batteryLevel: 78,
-    ),
-  ];
-  // --------------------------------------------------------------------
-
   @override
   Widget build(BuildContext context) {
-    // ListView.builder is the best way to create a list from data.
-    return ListView.builder(
-      padding: const EdgeInsets.all(8.0),
-      itemCount: sewerUnits.length,
-      itemBuilder: (context, index) {
-        final unit = sewerUnits[index];
-        return _buildUnitCard(context, unit);
+    final supabase = Supabase.instance.client;
+
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: supabase
+          .from('device_status')
+          .stream(primaryKey: ['id'])
+          .execute(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final units = snapshot.data!;
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(8),
+          itemCount: units.length,
+          itemBuilder: (context, index) {
+            final unit = units[index];
+            return _buildUnitCard(context, unit);
+          },
+        );
       },
     );
   }
 
-  // A helper widget to create a consistent card for each unit.
-  Widget _buildUnitCard(BuildContext context, SewerUnit unit) {
+  Widget _buildUnitCard(BuildContext context, Map<String, dynamic> unit) {
+    final isActive = unit['is_active'] == true;
+
+    final status = (unit['status'] ?? "Unknown").toString();
+    final location = (unit['location'] ?? "Unknown Location").toString();
+
+    // Handle heartbeat safely
+    final hb = unit['last_heartbeat'];
+    final DateTime? lastHeartbeat =
+    hb is String ? DateTime.tryParse(hb) :
+    hb is DateTime ? hb :
+    null;
+
+    // Handle distance safely
+    final rawDistance = unit['distance'];
+    final String? distanceText = (rawDistance is num)
+        ? rawDistance.toDouble().toStringAsFixed(1)
+        : rawDistance?.toString();
+
+    final int battery = unit['battery_level'] is num
+        ? unit['battery_level']
+        : 0;
+
     return Card(
-      elevation: 3,
-      margin: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 8.0),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: ListTile(
-        leading: Icon(
-          _getStatusIcon(unit.status),
-          color: _getStatusColor(unit.status),
-          size: 40,
+      elevation: 4,
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  _getStatusIcon(status),
+                  color: _getStatusColor(status),
+                  size: 36,
+                ),
+
+                const SizedBox(width: 12),
+
+                Expanded(
+                  child: Text(
+                    (unit['id'] ?? "Unknown ID").toString(),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                    ),
+                  ),
+                ),
+
+                Text(
+                  "$battery%",
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: battery > 20 ? Colors.green : Colors.red,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 8),
+
+            Text(location, style: const TextStyle(fontSize: 15)),
+
+            const SizedBox(height: 10),
+
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "Status: $status",
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: _getStatusColor(status),
+                  ),
+                ),
+                Text(
+                  isActive ? "Arduino: Active" : "Arduino: Offline",
+                  style: TextStyle(
+                    color: isActive ? Colors.green : Colors.red,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+
+            if (distanceText != null)
+              Text("Distance: $distanceText cm"),
+
+            if (lastHeartbeat != null)
+              Text(
+                "Last update: ${_timeAgo(lastHeartbeat)}",
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+          ],
         ),
-        title: Text(
-          unit.id,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Text('${unit.location}\nStatus: ${unit.status}'),
-        trailing: Text(
-          '${unit.batteryLevel}%',
-          style: TextStyle(
-            color: unit.batteryLevel > 20 ? Colors.green.shade800 : Colors.red,
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
-        ),
-        isThreeLine: true,
-        onTap: () {
-          // You can add navigation here to a detailed page for this unit.
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Tapped on unit ${unit.id}')));
-        },
       ),
     );
   }
 
-  // Helper functions to get color and icon based on unit status.
+
+  // Status color logic --------------------------------------------------------
   Color _getStatusColor(String status) {
     switch (status) {
       case 'Critical Alert':
-        return Colors.red.shade700;
-      case 'Maintenance Required':
-        return Colors.orange.shade700;
+        return Colors.red;
+      case 'Alert':
+        return Colors.orange;
       case 'Active':
-        return Colors.green.shade700;
-      default: // Offline
-        return Colors.grey.shade600;
+        return Colors.green;
+      default:
+        return Colors.grey;
     }
   }
 
@@ -120,12 +158,23 @@ class UnitInfoScreen extends StatelessWidget {
     switch (status) {
       case 'Critical Alert':
         return Icons.error;
-      case 'Maintenance Required':
-        return Icons.build;
+      case 'Alert':
+        return Icons.warning;
       case 'Active':
         return Icons.check_circle;
-      default: // Offline
+      default:
         return Icons.power_off;
     }
+  }
+
+  // TimeAgo formatter ---------------------------------------------------------
+  String _timeAgo(DateTime dt) {
+    final now = DateTime.now();
+    final diff = now.difference(dt).inSeconds;
+
+    if (diff < 60) return "$diff sec ago";
+    if (diff < 3600) return "${diff ~/ 60} min ago";
+    if (diff < 86400) return "${diff ~/ 3600} hrs ago";
+    return DateFormat('dd MMM, hh:mm a').format(dt);
   }
 }
