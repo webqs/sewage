@@ -28,7 +28,7 @@ class _ProfilePageState extends State<ProfilePage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Profiles"),
-        backgroundColor: Colors.blueGrey.shade900,
+        backgroundColor: Colors.blueGrey.shade100,
       ),
       body: FutureBuilder(
         future: _futureProfiles,

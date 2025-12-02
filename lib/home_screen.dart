@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sewage/addaccount.dart';
+import 'package:sewage/profile_page.dart';
 
 import 'Profie.dart';
 import 'alerts_screen.dart';
@@ -108,13 +109,27 @@ class HomeScreen extends StatelessWidget {
                       ),
                     ),
 
+                    const SizedBox(height: 12),
+
                     _buildNavButton(
                       icon: Icons.history,
                       label: 'Add Account',
                       onTap: () => _navigateToPage(
                         context,
                         const addaccounnt(),
-                        'Action & History',
+                        'Add Account',
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    _buildNavButton(
+                      icon: Icons.history,
+                      label: 'View Users',
+                      onTap: () => _navigateToPage(
+                        context,
+                        const ProfilePage(),
+                        'Users',
                       ),
                     ),
                   ],
