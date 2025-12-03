@@ -12,15 +12,65 @@ class _ProfilePageState extends State<ProfilePage> {
   final supabase = Supabase.instance.client;
   late Future<List<Map<String, dynamic>>> _futureProfiles;
 
-  Future<List<Map<String, dynamic>>> fetchProfiles() async {
-    final response = await supabase.from('profile').select();
-    return List<Map<String, dynamic>>.from(response);
-  }
-
   @override
   void initState() {
     super.initState();
     _futureProfiles = fetchProfiles();
+  }
+
+  Future<List<Map<String, dynamic>>> fetchProfiles() async {
+    // ✅ Explicitly selecting columns including email
+    final response = await supabase
+        .from('profile')
+        .select('id, role, email, created_at');
+    return List<Map<String, dynamic>>.from(response);
+  }
+
+  // ✅ DELETE PROFILE
+  Future<void> deleteProfile(int id) async {
+    try {
+      await supabase.from('profile').delete().eq('id', id);
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Profile deleted")),
+      );
+
+      setState(() {
+        _futureProfiles = fetchProfiles();
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Delete failed: $e")),
+      );
+    }
+  }
+
+  // ✅ CONFIRM DELETE DIALOG
+  void _confirmDelete(int id) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Delete Profile"),
+        content: const Text("Are you sure you want to delete this profile?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () {
+              Navigator.pop(context);
+              deleteProfile(id);
+            },
+            child: const Text("Delete"),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -30,27 +80,21 @@ class _ProfilePageState extends State<ProfilePage> {
         title: const Text("Profiles"),
         backgroundColor: Colors.blueGrey.shade100,
       ),
-      body: FutureBuilder(
+      body: FutureBuilder<List<Map<String, dynamic>>>(
         future: _futureProfiles,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
+            return const Center(child: CircularProgressIndicator());
           }
 
           if (snapshot.hasError) {
-            return Center(
-              child: Text("Error: ${snapshot.error}"),
-            );
+            return Center(child: Text("Error: ${snapshot.error}"));
           }
 
           final profiles = snapshot.data ?? [];
 
           if (profiles.isEmpty) {
-            return const Center(
-              child: Text("No profiles found."),
-            );
+            return const Center(child: Text("No profiles found."));
           }
 
           return ListView.builder(
@@ -58,6 +102,9 @@ class _ProfilePageState extends State<ProfilePage> {
             itemCount: profiles.length,
             itemBuilder: (context, index) {
               final profile = profiles[index];
+              final int profileId = profile['id'];
+              final String email = profile['email'] ?? "No email";
+
               return Card(
                 margin: const EdgeInsets.symmetric(vertical: 8),
                 elevation: 3,
@@ -65,16 +112,24 @@ class _ProfilePageState extends State<ProfilePage> {
                   leading: CircleAvatar(
                     backgroundColor: Colors.blueGrey.shade700,
                     child: Text(
-                      profile['id'].toString(),
+                      profileId.toString(),
                       style: const TextStyle(color: Colors.white),
                     ),
                   ),
                   title: Text(
-                    "Role: ${profile['role'] ?? 'N/A'}",
+                    email, // ✅ Email shown as main title
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  subtitle: Text(
-                    "Created: ${profile['created_at'] ?? 'N/A'}",
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text("Role: ${profile['role'] ?? 'N/A'}"),
+                      Text("Created: ${profile['created_at'] ?? 'N/A'}"),
+                    ],
+                  ),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.delete, color: Colors.red),
+                    onPressed: () => _confirmDelete(profileId),
                   ),
                 ),
               );
