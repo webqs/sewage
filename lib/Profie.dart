@@ -15,16 +15,16 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   bool uploading = false;
 
-  // Fetch profile from Supabase
-  Future<Map<String, dynamic>?> fetchProfile(String email) async {
+  /// ✅ FETCH PROFILE USING auth_id (MATCHES YOUR TABLE)
+  Future<Map<String, dynamic>?> fetchProfile(String authId) async {
     return await Supabase.instance.client
         .from('profile')
         .select()
-        .eq('email', email)
+        .eq('auth_id', authId)
         .maybeSingle();
   }
 
-  // Upload image to Supabase Storage + update database
+  /// ✅ UPLOAD IMAGE + UPDATE PROFILE
   Future<void> uploadProfilePic() async {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
@@ -41,34 +41,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final fileName = "avatar_${user.id}.jpg";
 
     try {
-      // Upload to storage bucket
+      /// ✅ CORRECT BUCKET NAME
       await Supabase.instance.client.storage
-          .from('profile_pics')
+          .from('profile')
           .upload(fileName, file, fileOptions: const FileOptions(upsert: true));
 
-      // Get public URL
       final publicUrl = Supabase.instance.client.storage
-          .from('profile_pics')
+          .from('profile')
           .getPublicUrl(fileName);
 
-      // Update profile table
+      /// ✅ UPDATE USING auth_id (NOT id, NOT email)
       await Supabase.instance.client.from('profile').update({
         'avatar_url': publicUrl,
-      }).eq('email', user.email!);
+      }).eq('auth_id', user.id);
 
-      setState(() {}); // refresh UI
+      if (mounted) setState(() {});
     } catch (error) {
       debugPrint('Upload error: $error');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to upload image: $error')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to upload image')),
+        );
+      }
     }
 
-    setState(() => uploading = false);
+    if (mounted) setState(() => uploading = false);
   }
 
   Future<void> signOut(BuildContext context) async {
     await Supabase.instance.client.auth.signOut();
+    if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const LoginPage()),
           (route) => false,
@@ -97,10 +99,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
       ),
       body: FutureBuilder<Map<String, dynamic>?>(
-        future: fetchProfile(user.email!),
+        future: fetchProfile(user.id), // ✅ auth_id match
         builder: (context, snapshot) {
-          if (!snapshot.hasData) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
+          }
+
+          if (!snapshot.hasData || snapshot.data == null) {
+            return const Center(child: Text("Profile not found"));
           }
 
           final profile = snapshot.data!;
@@ -110,7 +116,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Column(
               children: [
                 // -------------------------
-                // Profile Picture
+                // ✅ Profile Picture
                 // -------------------------
                 CircleAvatar(
                   radius: 60,
@@ -135,15 +141,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 30),
 
                 // -------------------------
-                // Email & Role Details
+                // ✅ Email & Role Details
                 // -------------------------
                 Text(
-                  'Email: ${profile['email']}',
+                  'Email: ${profile['email'] ?? 'N/A'}',
                   style: const TextStyle(fontSize: 18),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Role: ${profile['role']}',
+                  'Role: ${profile['role'] ?? 'N/A'}',
                   style: const TextStyle(fontSize: 18),
                 ),
               ],
