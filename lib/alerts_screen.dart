@@ -1,6 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'main.dart'; // notifications
 
 class AlertsScreen extends StatefulWidget {
   const AlertsScreen({super.key});
@@ -20,43 +23,105 @@ class _AlertsScreenState extends State<AlertsScreen> {
 
   final List<String> _locations = ["All"];
 
+  Timer? _autoRefreshTimer;
+
   @override
   void initState() {
     super.initState();
     fetchAlerts();
+
+    // 🔥 Auto refresh every 5 seconds
+    _autoRefreshTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      fetchAlerts();
+    });
+
+    // 🔥 Realtime insert listener
+    supabase
+        .channel('public:alerts')
+        .onPostgresChanges(
+      event: PostgresChangeEvent.insert,
+      schema: 'public',
+      table: 'alerts',
+      callback: (payload) {
+        final alert = payload.newRecord;
+        if (alert == null) return;
+
+        _showAlertNotification(
+          alert['status'] ?? 'Alert',
+          alert['severity'] ?? 'unknown',
+          alert['location'] ?? 'unknown',
+        );
+
+        fetchAlerts(); // refresh on new alert
+      },
+    )
+        .subscribe();
   }
 
-  // ✅ FETCH ALERTS
+  @override
+  void dispose() {
+    _autoRefreshTimer?.cancel();
+    super.dispose();
+  }
+
+  void _showAlertNotification(String status, String severity, String location) {
+    final androidDetails = AndroidNotificationDetails(
+      'alerts_channel',
+      'Alerts',
+      importance: Importance.high,
+      priority: Priority.high,
+      ticker: 'ticker',
+    );
+
+    final details = NotificationDetails(android: androidDetails);
+
+    notificationsPlugin.show(
+      DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      "🚨 $severity Alert",
+      "$status detected at $location",
+      details,
+    );
+  }
+
+  // ============================
+  // FETCH ALERTS (last 24 hours)
+  // ============================
   Future<void> fetchAlerts() async {
     final response = await supabase
         .from('alerts')
         .select()
+        .eq('processed', false)
         .order('created_at', ascending: false);
 
     final data = List<Map<String, dynamic>>.from(response);
+    final cutoff = DateTime.now().subtract(const Duration(hours: 24));
 
-    // build unique location list
+    final recentAlerts = data.where((alert) {
+      if (alert['created_at'] == null) return false;
+      final createdAt = DateTime.parse(alert['created_at']);
+      return createdAt.isAfter(cutoff);
+    }).toList();
+
     _locations
       ..clear()
       ..add("All")
       ..addAll(
-        data
+        recentAlerts
             .map((a) => (a['location'] ?? "Unknown").toString())
             .toSet(),
       );
 
     setState(() {
-      _allAlerts = data;
+      _allAlerts = recentAlerts;
       _applyFilters();
     });
   }
 
-  // ✅ APPLY FILTER + SEARCH
   void _applyFilters() {
     setState(() {
       _filteredAlerts = _allAlerts.where((alert) {
-        final matchesLocation = _selectedLocation == "All" ||
-            alert['location'] == _selectedLocation;
+        final matchesLocation =
+            _selectedLocation == "All" || alert['location'] == _selectedLocation;
 
         final matchesSeverity = alert['severity']
             .toString()
@@ -68,122 +133,125 @@ class _AlertsScreenState extends State<AlertsScreen> {
     });
   }
 
-  Future<void> _refresh() async {
-    await fetchAlerts();
-  }
+  Future<void> _refresh() async => fetchAlerts();
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        // ✅ SEARCH + FILTER BAR
-        Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              // Severity Search
-              Expanded(
-                child: TextField(
-                  decoration: InputDecoration(
-                    hintText: "Search severity...",
-                    prefixIcon: const Icon(Icons.search),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Alerts"),
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () {
+              fetchAlerts();
+            },
+          ),
+        ],
+      ),
+
+      body: Column(
+        children: [
+          // SEARCH + FILTER
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    decoration: InputDecoration(
+                      hintText: "Search severity...",
+                      prefixIcon: const Icon(Icons.search),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
+                    onChanged: (value) {
+                      _severitySearch = value;
+                      _applyFilters();
+                    },
                   ),
+                ),
+                const SizedBox(width: 12),
+                DropdownButton<String>(
+                  value: _selectedLocation,
+                  borderRadius: BorderRadius.circular(12),
+                  items: _locations
+                      .map((loc) =>
+                      DropdownMenuItem(value: loc, child: Text(loc)))
+                      .toList(),
                   onChanged: (value) {
-                    _severitySearch = value;
+                    _selectedLocation = value!;
                     _applyFilters();
                   },
                 ),
-              ),
-              const SizedBox(width: 12),
-
-              // Location Filter
-              DropdownButton<String>(
-                value: _selectedLocation,
-                borderRadius: BorderRadius.circular(12),
-                items: _locations
-                    .map(
-                      (loc) => DropdownMenuItem(
-                    value: loc,
-                    child: Text(loc),
-                  ),
-                )
-                    .toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedLocation = value!;
-                    _applyFilters();
-                  });
-                },
-              ),
-            ],
-          ),
-        ),
-
-        // ✅ ALERT LIST
-        Expanded(
-          child: RefreshIndicator(
-            onRefresh: _refresh,
-            child: _filteredAlerts.isEmpty
-                ? const Center(child: Text("No matching alerts"))
-                : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: _filteredAlerts.length,
-              itemBuilder: (context, index) {
-                final alert = _filteredAlerts[index];
-
-                return _buildAlertCard(
-                  context,
-                  title: alert['status'] ?? "Unknown",
-                  severity: alert['severity'] ?? "No severity",
-                  location: alert['location'] ?? "Unknown",
-                  distance: alert['distance']?.toString() ?? "N/A",
-                  timestamp: _formatDate(alert['created_at']),
-                  imagePath: alert['image_path'],
-                  icon: _selectIcon(alert['severity']),
-                  iconColor: _selectColor(alert['severity']),
-                  isCritical: alert['severity'] == "high",
-                );
-              },
+              ],
             ),
           ),
-        ),
-      ],
+
+          // ALERT LIST
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: _refresh,
+              child: _filteredAlerts.isEmpty
+                  ? const Center(child: Text("No alerts in last 24 hours"))
+                  : ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: _filteredAlerts.length,
+                itemBuilder: (context, index) {
+                  final alert = _filteredAlerts[index];
+
+                  return _buildAlertCard(
+                    context,
+                    title: alert['status'] ?? "Unknown",
+                    severity: alert['severity'] ?? "N/A",
+                    location: alert['location'] ?? "Unknown",
+                    distance: alert['distance']?.toString() ?? "N/A",
+                    timestamp: _formatDate(alert['created_at']),
+                    imagePath: alert['image_path'],
+                    icon: _selectIcon(alert['severity']),
+                    iconColor: _colorFromSeverity(alert['severity']),
+                    isCritical:
+                    alert['severity']?.toLowerCase() == "high",
+                  );
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  // ✅ DATE FORMAT
   String _formatDate(dynamic dateValue) {
     if (dateValue == null) return "Unknown time";
-    final dt = DateTime.parse(dateValue);
+    final dt = DateTime.parse(dateValue).toLocal();
     return DateFormat('MMM d, h:mm a').format(dt);
   }
 
   IconData _selectIcon(String? severity) {
     switch (severity?.toLowerCase()) {
-      case 'critical':
+      case 'high':
         return Icons.error;
-      case 'warning':
-        return Icons.warning_amber_rounded;
+      case 'medium':
+        return Icons.warning;
       default:
-        return Icons.info_outline;
+        return Icons.info;
     }
   }
 
-  Color _selectColor(String? severity) {
+  Color _colorFromSeverity(String? severity) {
     switch (severity?.toLowerCase()) {
-      case 'critical':
-        return Colors.red.shade700;
-      case 'warning':
-        return Colors.orange.shade700;
+      case 'high':
+        return Colors.red;
+      case 'medium':
+        return Colors.orange;
       default:
-        return Colors.blue.shade700;
+        return Colors.blue;
     }
   }
 
-  // ✅ IMAGE + DETAILS CARD
   Widget _buildAlertCard(
       BuildContext context, {
         required String title,
@@ -204,11 +272,11 @@ class _AlertsScreenState extends State<AlertsScreen> {
       elevation: 4,
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
         side: BorderSide(
-          color: isCritical ? Colors.red.shade700 : Colors.grey.shade300,
+          color: isCritical ? Colors.red : Colors.grey.shade300,
           width: isCritical ? 2 : 1,
         ),
-        borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         children: [
@@ -225,10 +293,10 @@ class _AlertsScreenState extends State<AlertsScreen> {
           ListTile(
             leading: Icon(icon, color: iconColor, size: 40),
             title: Text(
-              title,
+              "$title",
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                color: isCritical ? Colors.red.shade900 : Colors.black87,
+                color: isCritical ? Colors.red.shade700 : Colors.black87,
               ),
             ),
             subtitle: Text(
@@ -238,7 +306,6 @@ class _AlertsScreenState extends State<AlertsScreen> {
                   "$timestamp",
             ),
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-            isThreeLine: true,
           ),
         ],
       ),

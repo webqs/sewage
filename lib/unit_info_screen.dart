@@ -1,70 +1,130 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 
-class UnitInfoScreen extends StatelessWidget {
+class UnitInfoScreen extends StatefulWidget {
   const UnitInfoScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final supabase = Supabase.instance.client;
+  State<UnitInfoScreen> createState() => _UnitInfoScreenState();
+}
 
-    return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: supabase
-          .from('device_status')
-          .stream(primaryKey: ['id'])
-          .execute(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator());
-        }
+class _UnitInfoScreenState extends State<UnitInfoScreen> {
+  final supabase = Supabase.instance.client;
 
-        final units = snapshot.data!;
+  List<Map<String, dynamic>> _units = [];
+  Timer? _autoRefreshTimer;
 
-        return ListView.builder(
-          padding: const EdgeInsets.all(8),
-          itemCount: units.length,
-          itemBuilder: (context, index) {
-            final unit = units[index];
-            return _buildUnitCard(context, unit);
-          },
-        );
+  @override
+  void initState() {
+    super.initState();
+
+    fetchDeviceStatus();
+
+    // 🔥 Auto-refresh every 5 seconds
+    _autoRefreshTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      fetchDeviceStatus();
+    });
+
+    // 🔥 Realtime listener for device_status updates
+    supabase
+        .channel('public:device_status')
+        .onPostgresChanges(
+      event: PostgresChangeEvent.update,
+      schema: 'public',
+      table: 'device_status',
+      callback: (payload) {
+        fetchDeviceStatus(); // refresh on realtime event
       },
+    )
+        .subscribe();
+  }
+
+  @override
+  void dispose() {
+    _autoRefreshTimer?.cancel();
+    super.dispose();
+  }
+
+  // ============================
+  // FETCH device_status
+  // ============================
+  Future<void> fetchDeviceStatus() async {
+    final response =
+    await supabase.from('device_status').select().order('id', ascending: true);
+
+    final data = List<Map<String, dynamic>>.from(response);
+
+    setState(() {
+      _units = data;
+    });
+  }
+
+  Future<void> _manualRefresh() async {
+    await fetchDeviceStatus();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Unit Info"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _manualRefresh,
+          )
+        ],
+      ),
+
+      body: _units.isEmpty
+          ? const Center(child: CircularProgressIndicator())
+          : ListView.builder(
+        padding: const EdgeInsets.all(8),
+        itemCount: _units.length,
+        itemBuilder: (context, index) {
+          return _buildUnitCard(context, _units[index]);
+        },
+      ),
     );
   }
 
+  // ============================
+  // UNIT CARD UI
+  // ============================
   Widget _buildUnitCard(BuildContext context, Map<String, dynamic> unit) {
-    final isActive = unit['is_active'] == true;
+    final bool isActive = unit['is_active'] == true;
 
-    final status = (unit['status'] ?? "Unknown").toString();
-    final location = (unit['location'] ?? "Unknown Location").toString();
+    final String status = (unit['status'] ?? "Unknown").toString();
+    final String location = (unit['location'] ?? "Unknown").toString();
+    final String deviceName = (unit['device_name'] ?? "Unknown Device").toString();
+    final String deviceId = (unit['device_id'] ?? "Unknown ID").toString();
+    final String installDate = (unit['installation_date'] ?? "-").toString();
 
-    // Handle heartbeat safely
-    final hb = unit['last_heartbeat'];
-    final DateTime? lastHeartbeat =
-    hb is String ? DateTime.tryParse(hb) :
-    hb is DateTime ? hb :
-    null;
+    // Last seen
+    final lastSeenRaw = unit['last_seen'];
+    final DateTime? lastSeen = lastSeenRaw is String
+        ? DateTime.tryParse(lastSeenRaw)?.toLocal()
+        : null;
 
-    // Handle distance safely
-    final rawDistance = unit['distance'];
-    final String? distanceText = (rawDistance is num)
-        ? rawDistance.toDouble().toStringAsFixed(1)
-        : rawDistance?.toString();
+    // Distance
+    final rawDistance = unit['current_distance'];
+    final String? distanceText =
+    rawDistance is num ? "${rawDistance.toStringAsFixed(1)} cm" : null;
 
-    final int battery = unit['battery_level'] is num
-        ? unit['battery_level']
-        : 0;
+    final int battery = unit['battery_level'] is num ? unit['battery_level'] : 0;
 
     return Card(
       elevation: 4,
       margin: const EdgeInsets.symmetric(vertical: 8),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: Padding(
-        padding: const EdgeInsets.all(12.0),
+        padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // HEADER ---------------------------------------------------------
             Row(
               children: [
                 Icon(
@@ -72,12 +132,11 @@ class UnitInfoScreen extends StatelessWidget {
                   color: _getStatusColor(status),
                   size: 36,
                 ),
-
                 const SizedBox(width: 12),
 
                 Expanded(
                   child: Text(
-                    (unit['id'] ?? "Unknown ID").toString(),
+                    deviceName,
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 20,
@@ -86,7 +145,7 @@ class UnitInfoScreen extends StatelessWidget {
                 ),
 
                 Text(
-                  "$battery%",
+                  battery == 0 ? "--" : "$battery%",
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
@@ -96,12 +155,15 @@ class UnitInfoScreen extends StatelessWidget {
               ],
             ),
 
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
 
-            Text(location, style: const TextStyle(fontSize: 15)),
+            Text("Device ID: $deviceId"),
+            Text("Location: $location"),
+            Text("Installed on: $installDate"),
 
             const SizedBox(height: 10),
 
+            // STATUS -----------------------------------------------------------
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -113,7 +175,7 @@ class UnitInfoScreen extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  isActive ? "Arduino: Active" : "Arduino: Offline",
+                  isActive ? "Device: Active" : "Device: Offline",
                   style: TextStyle(
                     color: isActive ? Colors.green : Colors.red,
                     fontWeight: FontWeight.bold,
@@ -123,11 +185,11 @@ class UnitInfoScreen extends StatelessWidget {
             ),
 
             if (distanceText != null)
-              Text("Distance: $distanceText cm"),
+              Text("Distance: $distanceText"),
 
-            if (lastHeartbeat != null)
+            if (lastSeen != null)
               Text(
-                "Last update: ${_timeAgo(lastHeartbeat)}",
+                "Last seen: ${_timeAgo(lastSeen)}",
                 style: TextStyle(
                   fontSize: 13,
                   color: Colors.grey.shade700,
@@ -139,42 +201,33 @@ class UnitInfoScreen extends StatelessWidget {
     );
   }
 
-
-  // Status color logic --------------------------------------------------------
+  // ============================
+  // HELPERS
+  // ============================
   Color _getStatusColor(String status) {
-    switch (status) {
-      case 'Critical Alert':
-        return Colors.red;
-      case 'Alert':
-        return Colors.orange;
-      case 'Active':
-        return Colors.green;
-      default:
-        return Colors.grey;
-    }
+    if (status == "online") return Colors.green;
+    if (status == "offline") return Colors.red;
+    return Colors.grey;
   }
 
   IconData _getStatusIcon(String status) {
-    switch (status) {
-      case 'Critical Alert':
-        return Icons.error;
-      case 'Alert':
-        return Icons.warning;
-      case 'Active':
-        return Icons.check_circle;
-      default:
-        return Icons.power_off;
-    }
+    if (status == "online") return Icons.wifi;
+    if (status == "offline") return Icons.wifi_off;
+    return Icons.help_outline;
   }
 
-  // TimeAgo formatter ---------------------------------------------------------
+  // TIME AGO --------------------------------------------------------------
   String _timeAgo(DateTime dt) {
     final now = DateTime.now();
-    final diff = now.difference(dt).inSeconds;
+    final diff = now.difference(dt);
 
-    if (diff < 60) return "$diff sec ago";
-    if (diff < 3600) return "${diff ~/ 60} min ago";
-    if (diff < 86400) return "${diff ~/ 3600} hrs ago";
-    return DateFormat('dd MMM, hh:mm a').format(dt);
+    if (diff.inSeconds < 5) return "Just now";
+    if (diff.inSeconds < 60) return "${diff.inSeconds}s ago";
+    if (diff.inMinutes < 60) return "${diff.inMinutes} min ago";
+    if (diff.inHours < 24) return "${diff.inHours} hrs ago";
+    if (diff.inDays == 1) return "Yesterday";
+    if (diff.inDays < 7) return "${diff.inDays} days ago";
+
+    return DateFormat('MMM d, h:mm a').format(dt);
   }
 }
