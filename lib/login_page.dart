@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'admin/home_screen.dart'; // Admin
+import 'client/clienthome_page.dart';
 import 'signup_page.dart';
-import 'home_screen.dart';
 import 'supabase_config.dart';
+import 'worker/workerhome.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -20,22 +21,68 @@ class _LoginPageState extends State<LoginPage> {
   bool loading = false;
   bool passwordVisible = false;
 
+  // 🔹 AUTO LOGIN
   @override
   void initState() {
     super.initState();
 
-    /// 🔥 Auto Login: If a session already exists, skip login page
     final session = SupabaseConfig.client.auth.currentSession;
     if (session != null) {
       Future.microtask(() {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-        );
+        redirectBasedOnRole(session.user.id);
       });
     }
   }
 
+  // 🔹 ROLE BASED REDIRECT (SAFE)
+  Future<void> redirectBasedOnRole(String userId) async {
+    try {
+      final data = await SupabaseConfig.client
+          .from('profile')
+          .select('role')
+          .eq('auth_id', userId)
+          .maybeSingle();
+
+      if (data == null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Profile not found. Please contact administrator."),
+          ),
+        );
+        return;
+      }
+
+      final role = data['role'];
+
+      if (!mounted) return;
+
+      if (role == 'admin') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+        );
+      } else if (role == 'worker') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const WorkerHomeScreen()),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const ClientHomeScreen()),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Role fetch failed: $e")));
+      }
+    }
+  }
+
+  // 🔹 LOGIN FUNCTION
   Future<void> login() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -50,16 +97,13 @@ class _LoginPageState extends State<LoginPage> {
       if (!mounted) return;
 
       if (res.session != null) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-        );
+        await redirectBasedOnRole(res.user!.id);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString())),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString())));
       }
     }
 
@@ -85,7 +129,7 @@ class _LoginPageState extends State<LoginPage> {
                 ),
                 const SizedBox(height: 40),
 
-                // Email
+                // EMAIL
                 TextFormField(
                   controller: emailController,
                   keyboardType: TextInputType.emailAddress,
@@ -108,7 +152,7 @@ class _LoginPageState extends State<LoginPage> {
                 ),
                 const SizedBox(height: 20),
 
-                // Password
+                // PASSWORD
                 TextFormField(
                   controller: passwordController,
                   obscureText: !passwordVisible,
@@ -143,7 +187,7 @@ class _LoginPageState extends State<LoginPage> {
                 ),
                 const SizedBox(height: 30),
 
-                // Login button
+                // LOGIN BUTTON
                 SizedBox(
                   width: double.infinity,
                   height: 52,
@@ -156,20 +200,20 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     child: loading
                         ? const SizedBox(
-                      height: 22,
-                      width: 22,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
+                            height: 22,
+                            width: 22,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
                         : const Text("Login"),
                   ),
                 ),
 
                 const SizedBox(height: 20),
 
-                // Sign up link
+                // SIGNUP
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -178,9 +222,7 @@ class _LoginPageState extends State<LoginPage> {
                       onPressed: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(
-                            builder: (_) => const SignupPage(),
-                          ),
+                          MaterialPageRoute(builder: (_) => const SignupPage()),
                         );
                       },
                       child: const Text("Sign Up"),

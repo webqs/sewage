@@ -1,9 +1,10 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'login_page.dart';
+import '../login_page.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -30,8 +31,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (user == null) return;
 
     final picker = ImagePicker();
-    final pickedFile =
-    await picker.pickImage(source: ImageSource.gallery, imageQuality: 75);
+    final pickedFile = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 75,
+    );
 
     if (pickedFile == null) return;
 
@@ -51,17 +54,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
           .getPublicUrl(fileName);
 
       /// ✅ UPDATE USING auth_id (NOT id, NOT email)
-      await Supabase.instance.client.from('profile').update({
-        'avatar_url': publicUrl,
-      }).eq('auth_id', user.id);
+      await Supabase.instance.client
+          .from('profile')
+          .update({'avatar_url': publicUrl})
+          .eq('auth_id', user.id);
 
       if (mounted) setState(() {});
     } catch (error) {
       debugPrint('Upload error: $error');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to upload image')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Failed to upload image')));
       }
     }
 
@@ -73,7 +77,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const LoginPage()),
-          (route) => false,
+      (route) => false,
     );
   }
 
@@ -133,16 +137,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 uploading
                     ? const CircularProgressIndicator()
                     : ElevatedButton.icon(
-                  icon: const Icon(Icons.upload),
-                  label: const Text("Upload Profile Picture"),
-                  onPressed: uploadProfilePic,
-                ),
+                        icon: const Icon(Icons.upload),
+                        label: const Text("Upload Profile Picture"),
+                        onPressed: uploadProfilePic,
+                      ),
 
                 const SizedBox(height: 30),
 
-                // -------------------------
-                // ✅ Email & Role Details
-                // -------------------------
                 Text(
                   'Email: ${profile['email'] ?? 'N/A'}',
                   style: const TextStyle(fontSize: 18),

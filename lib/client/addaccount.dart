@@ -1,36 +1,58 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:sewage/worker/workerhome.dart';
 
-import 'admin/home_screen.dart';
-import 'login_page.dart';
-import 'supabase_config.dart';
+import '../supabase_config.dart'; // notifications
 
-class SignupPage extends StatefulWidget {
-  const SignupPage({super.key});
+class addaccounnt extends StatefulWidget {
+  const addaccounnt({super.key});
 
   @override
-  State<SignupPage> createState() => _SignupPageState();
+  State<addaccounnt> createState() => _AddAccountState();
 }
 
-class _SignupPageState extends State<SignupPage> {
+class _AddAccountState extends State<addaccounnt> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
+
+  String selectedRole = "Client"; // default
   bool loading = false;
 
-  Future<void> signup() async {
+  Future<void> createAccount() async {
     setState(() => loading = true);
 
     try {
+      // 1️⃣ Create authentication account
       final res = await SupabaseConfig.client.auth.signUp(
         email: emailController.text.trim(),
         password: passwordController.text.trim(),
       );
 
-      if (res.user != null) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-        );
+      if (res.user == null) {
+        throw "Failed to create auth user";
       }
+
+      final authId = res.user!.id; // UUID
+      final email = emailController.text.trim();
+
+      // 2️⃣ Insert into profile table (int8 id auto-increments)
+      await SupabaseConfig.client.from('profile').insert({
+        'auth_id': authId, // store UUID here
+        'email': email,
+        'role': selectedRole.toLowerCase(),
+      });
+
+      // 3️⃣ Success
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Account created as $selectedRole")),
+      );
+
+      // 4️⃣ Navigate home
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const WorkerHomeScreen()),
+      );
     } catch (e) {
       ScaffoldMessenger.of(
         context,
@@ -58,6 +80,7 @@ class _SignupPageState extends State<SignupPage> {
                 ),
                 const SizedBox(height: 40),
 
+                // Email
                 TextField(
                   controller: emailController,
                   decoration: InputDecoration(
@@ -69,6 +92,7 @@ class _SignupPageState extends State<SignupPage> {
                 ),
                 const SizedBox(height: 20),
 
+                // Password
                 TextField(
                   controller: passwordController,
                   obscureText: true,
@@ -79,10 +103,29 @@ class _SignupPageState extends State<SignupPage> {
                     ),
                   ),
                 ),
+                const SizedBox(height: 20),
+
+                // Role Selector
+                DropdownButtonFormField<String>(
+                  value: selectedRole,
+                  decoration: InputDecoration(
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    labelText: "Select Role",
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: "Client", child: Text("Client")),
+                    DropdownMenuItem(value: "Worker", child: Text("Worker")),
+                  ],
+                  onChanged: (value) {
+                    setState(() => selectedRole = value!);
+                  },
+                ),
                 const SizedBox(height: 30),
 
                 ElevatedButton(
-                  onPressed: loading ? null : signup,
+                  onPressed: loading ? null : createAccount,
                   style: ElevatedButton.styleFrom(
                     minimumSize: const Size(double.infinity, 50),
                     shape: RoundedRectangleBorder(
@@ -91,25 +134,7 @@ class _SignupPageState extends State<SignupPage> {
                   ),
                   child: loading
                       ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text("Sign Up"),
-                ),
-
-                const SizedBox(height: 20),
-
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text("Already have an account?"),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(builder: (_) => const LoginPage()),
-                        );
-                      },
-                      child: const Text("Login"),
-                    ),
-                  ],
+                      : const Text("Create Account"),
                 ),
               ],
             ),

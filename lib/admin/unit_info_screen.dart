@@ -1,7 +1,8 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class UnitInfoScreen extends StatefulWidget {
   const UnitInfoScreen({super.key});
@@ -22,22 +23,19 @@ class _UnitInfoScreenState extends State<UnitInfoScreen> {
 
     fetchDeviceStatus();
 
-    // 🔥 Auto-refresh every 5 seconds
-    _autoRefreshTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
-      fetchDeviceStatus();
-    });
+    _autoRefreshTimer = Timer.periodic(
+      const Duration(seconds: 5),
+      (_) => fetchDeviceStatus(),
+    );
 
-    // 🔥 Realtime listener for device_status updates
     supabase
         .channel('public:device_status')
         .onPostgresChanges(
-      event: PostgresChangeEvent.update,
-      schema: 'public',
-      table: 'device_status',
-      callback: (payload) {
-        fetchDeviceStatus(); // refresh on realtime event
-      },
-    )
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'device_status',
+          callback: (_) => fetchDeviceStatus(),
+        )
         .subscribe();
   }
 
@@ -47,88 +45,75 @@ class _UnitInfoScreenState extends State<UnitInfoScreen> {
     super.dispose();
   }
 
-  // ============================
-  // FETCH device_status
-  // ============================
   Future<void> fetchDeviceStatus() async {
-    final response =
-    await supabase.from('device_status').select().order('id', ascending: true);
-
-    final data = List<Map<String, dynamic>>.from(response);
+    final response = await supabase
+        .from('device_status')
+        .select()
+        .order('id', ascending: true);
 
     setState(() {
-      _units = data;
+      _units = List<Map<String, dynamic>>.from(response);
     });
-  }
-
-  Future<void> _manualRefresh() async {
-    await fetchDeviceStatus();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Unit Info"),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _manualRefresh,
-          )
-        ],
-      ),
-
-      body: _units.isEmpty
+    return Container(
+      color: Colors.white, // 🔥 FORCE WHITE BACKGROUND
+      child: _units.isEmpty
           ? const Center(child: CircularProgressIndicator())
           : ListView.builder(
-        padding: const EdgeInsets.all(8),
-        itemCount: _units.length,
-        itemBuilder: (context, index) {
-          return _buildUnitCard(context, _units[index]);
-        },
-      ),
+              padding: const EdgeInsets.all(12),
+              itemCount: _units.length,
+              itemBuilder: (context, index) {
+                return _buildUnitCard(_units[index]);
+              },
+            ),
     );
   }
 
   // ============================
   // UNIT CARD UI
   // ============================
-  Widget _buildUnitCard(BuildContext context, Map<String, dynamic> unit) {
+  Widget _buildUnitCard(Map<String, dynamic> unit) {
     final bool isActive = unit['is_active'] == true;
 
     final String status = (unit['status'] ?? "Unknown").toString();
     final String location = (unit['location'] ?? "Unknown").toString();
-    final String deviceName = (unit['device_name'] ?? "Unknown Device").toString();
+    final String deviceName = (unit['device_name'] ?? "Unknown Device")
+        .toString();
     final String deviceId = (unit['device_id'] ?? "Unknown ID").toString();
     final String installDate = (unit['installation_date'] ?? "-").toString();
 
-    // Coordinates
-    final double? latitude = unit['latitude'] is num ? unit['latitude'].toDouble() : null;
-    final double? longitude = unit['longitude'] is num ? unit['longitude'].toDouble() : null;
-
-    // Last seen
-    final lastSeenRaw = unit['last_seen'];
-    final DateTime? lastSeen = lastSeenRaw is String
-        ? DateTime.tryParse(lastSeenRaw)?.toLocal()
+    final double? latitude = unit['latitude'] is num
+        ? unit['latitude'].toDouble()
+        : null;
+    final double? longitude = unit['longitude'] is num
+        ? unit['longitude'].toDouble()
         : null;
 
-    // Distance
-    final rawDistance = unit['current_distance'];
-    final String? distanceText =
-    rawDistance is num ? "${rawDistance.toStringAsFixed(1)} cm" : null;
+    final DateTime? lastSeen = unit['last_seen'] is String
+        ? DateTime.tryParse(unit['last_seen'])?.toLocal()
+        : null;
 
-    final int battery = unit['battery_level'] is num ? unit['battery_level'] : 0;
+    final String? distanceText = unit['current_distance'] is num
+        ? "${unit['current_distance'].toStringAsFixed(1)} cm"
+        : null;
+
+    final int battery = unit['battery_level'] is num
+        ? unit['battery_level']
+        : 0;
 
     return Card(
+      color: Colors.white,
       elevation: 4,
       margin: const EdgeInsets.symmetric(vertical: 8),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // HEADER ---------------------------------------------------------
             Row(
               children: [
                 Icon(
@@ -137,7 +122,6 @@ class _UnitInfoScreenState extends State<UnitInfoScreen> {
                   size: 36,
                 ),
                 const SizedBox(width: 12),
-
                 Expanded(
                   child: Text(
                     deviceName,
@@ -147,7 +131,6 @@ class _UnitInfoScreenState extends State<UnitInfoScreen> {
                     ),
                   ),
                 ),
-
                 Text(
                   battery == 0 ? "--" : "$battery%",
                   style: TextStyle(
@@ -159,18 +142,19 @@ class _UnitInfoScreenState extends State<UnitInfoScreen> {
               ],
             ),
 
-            const SizedBox(height: 6),
-
+            const SizedBox(height: 8),
             Text("Device ID: $deviceId"),
             Text("Location: $location"),
             Text("Installed on: $installDate"),
 
             if (latitude != null && longitude != null)
-              Text("Lat: ${latitude.toStringAsFixed(5)},  Lon: ${longitude.toStringAsFixed(5)}"),
+              Text(
+                "Lat: ${latitude.toStringAsFixed(5)}, "
+                "Lon: ${longitude.toStringAsFixed(5)}",
+              ),
 
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
 
-            // STATUS -----------------------------------------------------------
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -191,23 +175,18 @@ class _UnitInfoScreenState extends State<UnitInfoScreen> {
               ],
             ),
 
-            if (distanceText != null)
-              Text("Distance: $distanceText"),
+            if (distanceText != null) Text("Distance: $distanceText"),
 
             if (lastSeen != null)
               Text(
                 "Last seen: ${_timeAgo(lastSeen)}",
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.grey.shade700,
-                ),
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
               ),
           ],
         ),
       ),
     );
   }
-
 
   // ============================
   // HELPERS
@@ -224,10 +203,8 @@ class _UnitInfoScreenState extends State<UnitInfoScreen> {
     return Icons.help_outline;
   }
 
-  // TIME AGO --------------------------------------------------------------
   String _timeAgo(DateTime dt) {
-    final now = DateTime.now();
-    final diff = now.difference(dt);
+    final diff = DateTime.now().difference(dt);
 
     if (diff.inSeconds < 5) return "Just now";
     if (diff.inSeconds < 60) return "${diff.inSeconds}s ago";

@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'supabase_config.dart';
+import 'admin/app_theme.dart';
 import 'login_page.dart';
-import 'app_theme.dart';
+import 'supabase_config.dart';
 
 final FlutterLocalNotificationsPlugin notificationsPlugin =
-FlutterLocalNotificationsPlugin();
+    FlutterLocalNotificationsPlugin();
 
 Future<void> initNotifications() async {
   const AndroidInitializationSettings androidSettings =
-  AndroidInitializationSettings('@mipmap/ic_launcher');
+      AndroidInitializationSettings('@mipmap/ic_launcher');
 
-  const InitializationSettings initSettings =
-  InitializationSettings(android: androidSettings);
+  const InitializationSettings initSettings = InitializationSettings(
+    android: androidSettings,
+  );
 
   await notificationsPlugin.initialize(initSettings);
 }

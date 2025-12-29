@@ -19,36 +19,33 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<List<Map<String, dynamic>>> fetchProfiles() async {
-    // ✅ Explicitly selecting columns including email
     final response = await supabase
         .from('profile')
         .select('id, role, email, created_at');
     return List<Map<String, dynamic>>.from(response);
   }
 
-  // ✅ DELETE PROFILE
   Future<void> deleteProfile(int id) async {
     try {
       await supabase.from('profile').delete().eq('id', id);
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Profile deleted")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Profile deleted")));
 
       setState(() {
         _futureProfiles = fetchProfiles();
       });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Delete failed: $e")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Delete failed: $e")));
     }
   }
 
-  // ✅ CONFIRM DELETE DIALOG
   void _confirmDelete(int id) {
     showDialog(
       context: context,
@@ -75,12 +72,9 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Profiles"),
-        backgroundColor: Colors.blueGrey.shade100,
-      ),
-      body: FutureBuilder<List<Map<String, dynamic>>>(
+    return Container(
+      color: Colors.white, // FORCE WHITE BACKGROUND
+      child: FutureBuilder<List<Map<String, dynamic>>>(
         future: _futureProfiles,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -117,7 +111,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                   ),
                   title: Text(
-                    email, // ✅ Email shown as main title
+                    email,
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   subtitle: Column(

@@ -1,7 +1,9 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
 
-import 'home_screen.dart';
-import 'supabase_config.dart';
+import 'package:flutter/material.dart';
+import 'package:sewage/worker/workerhome.dart';
+
+import '../supabase_config.dart'; // notifications
 
 class addaccounnt extends StatefulWidget {
   const addaccounnt({super.key});
@@ -49,7 +51,7 @@ class _AddAccountState extends State<addaccounnt> {
       // 4️⃣ Navigate home
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        MaterialPageRoute(builder: (_) => const WorkerHomeScreen()),
       );
     } catch (e) {
       ScaffoldMessenger.of(
