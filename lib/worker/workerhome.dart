@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:sewage/worker/addaccount.dart';
 import 'package:sewage/worker/profile_page.dart';
+import 'package:sewage/worker/send_report_screen.dart';
+import 'package:sewage/worker/worker_review_screen.dart';
+import 'package:sewage/worker/worker_task_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'Profie.dart';
@@ -141,6 +144,13 @@ class _HomeScreenState extends State<WorkerHomeScreen> {
                   'Unit Info',
                 ),
               ),
+
+              _buildNavButton(
+                icon: Icons.description,
+                label: 'Send Report',
+                onTap: () => _navigateToPage(context, const SendReportScreen(), 'Send Report'),
+              ),
+
               _buildNavButton(
                 icon: Icons.history,
                 label: 'Action & History',
@@ -150,21 +160,8 @@ class _HomeScreenState extends State<WorkerHomeScreen> {
                   'Action & History',
                 ),
               ),
-              _buildNavButton(
-                icon: Icons.person_add,
-                label: 'Add Account',
-                onTap: () => _navigateToPage(
-                  context,
-                  const addaccounnt(),
-                  'Add Account',
-                ),
-              ),
-              _buildNavButton(
-                icon: Icons.people,
-                label: 'View Users',
-                onTap: () =>
-                    _navigateToPage(context, const ProfilePage(), 'Users'),
-              ),
+
+
               _buildNavButton(
                 icon: Icons.map,
                 label: 'Map',

@@ -25,7 +25,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
     _autoRefreshTimer = Timer.periodic(
       const Duration(seconds: 5),
-      (timer) => fetchAlerts(),
+          (timer) => fetchAlerts(),
     );
   }
 
@@ -38,13 +38,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
   Future<void> fetchAlerts() async {
     final response = await supabase
         .from("alerts")
-        .select()
+        .select('*, profile!alerts_assigned_worker_id_fkey(name, email)')
         .order("created_at", ascending: false);
 
     setState(() {
       _alerts = List<Map<String, dynamic>>.from(response);
     });
   }
+
+  // ================= HELPERS =================
 
   Color severityColor(String severity) {
     switch (severity) {
@@ -55,6 +57,20 @@ class _HistoryScreenState extends State<HistoryScreen> {
       default:
         return Colors.green;
     }
+  }
+
+  Widget statusBadge(bool processed) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: processed ? Colors.green : Colors.orange,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        processed ? "RESOLVED" : "PENDING",
+        style: const TextStyle(color: Colors.white, fontSize: 12),
+      ),
+    );
   }
 
   String formatTime(String? raw) {
@@ -71,6 +87,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
     }
   }
 
+  // ================= UI =================
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -79,113 +97,99 @@ class _HistoryScreenState extends State<HistoryScreen> {
       body: _alerts.isEmpty
           ? const Center(child: CircularProgressIndicator())
           : ListView.builder(
+        padding: const EdgeInsets.all(12),
+        itemCount: _alerts.length,
+        itemBuilder: (context, index) {
+          final alert = _alerts[index];
+
+          final status = alert["status"] ?? "Unknown";
+          final severity = alert["severity"] ?? "low";
+          final distance = alert["distance"]?.toString() ?? "N/A";
+          final location = alert["location"] ?? "N/A";
+          final createdAt = formatTime(alert["created_at"]);
+          final imagePath = alert["image_path"];
+          final processed = alert["processed"] == true;
+
+          final worker = alert['profile'];
+          final workerName =
+              worker?['name'] ?? worker?['email'] ?? "Unassigned";
+
+          final meta = alert["metadata"];
+          String blockageRatio = "N/A";
+          if (meta is Map && meta["blockage_ratio"] is num) {
+            blockageRatio =
+                (meta["blockage_ratio"] as num).toStringAsFixed(1);
+          }
+
+          final lat = alert["latitude"];
+          final lon = alert["longitude"];
+
+          final imageUrl = imagePath != null
+              ? supabase.storage
+              .from('sewer-images')
+              .getPublicUrl(imagePath)
+              : null;
+
+          return Card(
+            elevation: 2,
+            margin: const EdgeInsets.only(bottom: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Padding(
               padding: const EdgeInsets.all(12),
-              itemCount: _alerts.length,
-              itemBuilder: (context, index) {
-                final alert = _alerts[index];
-
-                final status = alert["status"] ?? "Unknown";
-                final severity = alert["severity"] ?? "low";
-                final distance = alert["distance"]?.toString() ?? "N/A";
-                final location = alert["location"] ?? "N/A";
-                final createdAt = formatTime(alert["created_at"]);
-                final imagePath = alert["image_path"];
-
-                final meta = alert["metadata"];
-                String blockageRatio = "N/A";
-                if (meta is Map && meta["blockage_ratio"] is num) {
-                  blockageRatio = (meta["blockage_ratio"] as num)
-                      .toStringAsFixed(1);
-                }
-
-                // NEW: Coordinates
-                final lat = alert["latitude"];
-                final lon = alert["longitude"];
-
-                final imageUrl = supabase.storage
-                    .from('sewer-images')
-                    .getPublicUrl(imagePath);
-
-                return Card(
-                  elevation: 2,
-                  margin: const EdgeInsets.only(bottom: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "$status (${severity.toUpperCase()})",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: severityColor(severity),
+                        ),
+                      ),
+                      statusBadge(processed),
+                    ],
                   ),
-                  child: ListTile(
-                    leading: CircleAvatar(
-                      radius: 28,
-                      backgroundImage: imagePath != null
-                          ? NetworkImage(imageUrl)
-                          : null,
-                      child: imagePath == null
-                          ? const Icon(Icons.image_not_supported)
-                          : null,
-                    ),
 
-                    title: Text(
-                      "$status (${severity.toUpperCase()})",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: severityColor(severity),
+                  const SizedBox(height: 6),
+
+                  Text("👷 Worker: $workerName"),
+                  Text("🧱 Blockage: $blockageRatio%"),
+                  Text("📏 Distance: $distance cm"),
+                  Text("📍 Location: $location"),
+
+                  if (lat != null && lon != null)
+                    InkWell(
+                      onTap: () => openInMaps(lat, lon),
+                      child: Text(
+                        "🧭 Coordinates: $lat, $lon",
+                        style: const TextStyle(
+                          color: Colors.blue,
+                          decoration: TextDecoration.underline,
+                        ),
                       ),
                     ),
 
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text("Blockage: $blockageRatio%"),
-                        Text("Distance: $distance cm"),
-                        Text("Location: $location"),
-                        if (lat != null && lon != null)
-                          InkWell(
-                            onTap: () => openInMaps(lat, lon),
-                            child: Text(
-                              "Coordinates: $lat, $lon",
-                              style: const TextStyle(
-                                color: Colors.blue,
-                                decoration: TextDecoration.underline,
-                              ),
-                            ),
-                          ),
-                        Text("Time: $createdAt"),
-                      ],
+                  Text("🕒 Time: $createdAt"),
+
+                  const SizedBox(height: 10),
+
+                  if (imageUrl != null)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Image.network(imageUrl, height: 140, fit: BoxFit.cover),
                     ),
-
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => FullImageView(imageUrl: imageUrl),
-                        ),
-                      );
-                    },
-                  ),
-                );
-              },
+                ],
+              ),
             ),
-    );
-  }
-}
-
-// ==============================
-// FULL IMAGE VIEW SCREEN
-// ==============================
-class FullImageView extends StatelessWidget {
-  final String imageUrl;
-
-  const FullImageView({super.key, required this.imageUrl});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        title: const Text("Alert Image"),
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
+          );
+        },
       ),
-      body: Center(child: Image.network(imageUrl)),
     );
   }
 }

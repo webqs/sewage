@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -18,52 +19,48 @@ class _ProfilePageState extends State<ProfilePage> {
     _futureProfiles = fetchProfiles();
   }
 
+  // 🔹 Only fetch WORKERS + avatar
   Future<List<Map<String, dynamic>>> fetchProfiles() async {
     final response = await supabase
         .from('profile')
-        .select('id, role, email, created_at');
+        .select('id, role, email, created_at, avatar_url')
+        .eq('role', 'worker')
+        .order('created_at', ascending: false);
+
     return List<Map<String, dynamic>>.from(response);
   }
 
-  Future<void> deleteProfile(int id) async {
-    try {
-      await supabase.from('profile').delete().eq('id', id);
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Profile deleted")));
-
-      setState(() {
-        _futureProfiles = fetchProfiles();
-      });
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Delete failed: $e")));
-    }
+  String formatDate(String? raw) {
+    if (raw == null) return "Unknown";
+    final dt = DateTime.tryParse(raw);
+    if (dt == null) return raw;
+    return DateFormat("MMM d, yyyy  h:mm a").format(dt.toLocal());
   }
 
-  void _confirmDelete(int id) {
+  Future<void> deleteProfile(int id) async {
+    await supabase.from('profile').delete().eq('id', id);
+    setState(() => _futureProfiles = fetchProfiles());
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text("Worker removed")));
+  }
+
+  void _confirmDelete(int id, String email) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text("Delete Profile"),
-        content: const Text("Are you sure you want to delete this profile?"),
+        title: const Text("Remove Worker"),
+        content: Text("Remove this worker account?\n$email"),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () {
               Navigator.pop(context);
               deleteProfile(id);
             },
-            child: const Text("Delete"),
+            child: const Text("Remove"),
           ),
         ],
       ),
@@ -72,65 +69,86 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: Colors.white, // FORCE WHITE BACKGROUND
-      child: FutureBuilder<List<Map<String, dynamic>>>(
-        future: _futureProfiles,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _futureProfiles,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-          if (snapshot.hasError) {
-            return Center(child: Text("Error: ${snapshot.error}"));
-          }
+        if (snapshot.hasError) {
+          return Center(child: Text("Error: ${snapshot.error}"));
+        }
 
-          final profiles = snapshot.data ?? [];
+        final profiles = snapshot.data ?? [];
 
-          if (profiles.isEmpty) {
-            return const Center(child: Text("No profiles found."));
-          }
+        if (profiles.isEmpty) {
+          return const Center(child: Text("No workers found."));
+        }
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(12),
-            itemCount: profiles.length,
-            itemBuilder: (context, index) {
-              final profile = profiles[index];
-              final int profileId = profile['id'];
-              final String email = profile['email'] ?? "No email";
+        return ListView.builder(
+          padding: const EdgeInsets.all(14),
+          itemCount: profiles.length,
+          itemBuilder: (context, index) {
+            final profile = profiles[index];
 
-              return Card(
-                margin: const EdgeInsets.symmetric(vertical: 8),
-                elevation: 3,
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: Colors.blueGrey.shade700,
-                    child: Text(
-                      profileId.toString(),
-                      style: const TextStyle(color: Colors.white),
+            final id = profile['id'];
+            final email = profile['email'] ?? 'Unknown';
+            final avatar = profile['avatar_url'];
+            final createdAt = formatDate(profile['created_at']);
+
+            return Card(
+              elevation: 3,
+              margin: const EdgeInsets.only(bottom: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Row(
+                  children: [
+                    // 🧑 Avatar
+                    CircleAvatar(
+                      radius: 26,
+                      backgroundColor: Colors.blueGrey.shade300,
+                      backgroundImage:
+                      (avatar != null && avatar.isNotEmpty) ? NetworkImage(avatar) : null,
+                      child: (avatar == null || avatar.isEmpty)
+                          ? Text(
+                        email[0].toUpperCase(),
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18),
+                      )
+                          : null,
                     ),
-                  ),
-                  title: Text(
-                    email,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text("Role: ${profile['role'] ?? 'N/A'}"),
-                      Text("Created: ${profile['created_at'] ?? 'N/A'}"),
-                    ],
-                  ),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () => _confirmDelete(profileId),
-                  ),
+
+                    const SizedBox(width: 12),
+
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(email,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 15)),
+                          const SizedBox(height: 4),
+                          Text("Joined: $createdAt",
+                              style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                        ],
+                      ),
+                    ),
+
+                    IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      onPressed: () => _confirmDelete(id, email),
+                    )
+                  ],
                 ),
-              );
-            },
-          );
-        },
-      ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

@@ -1,5 +1,4 @@
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -16,7 +15,6 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   bool uploading = false;
 
-  /// ✅ FETCH PROFILE USING auth_id (MATCHES YOUR TABLE)
   Future<Map<String, dynamic>?> fetchProfile(String authId) async {
     return await Supabase.instance.client
         .from('profile')
@@ -25,7 +23,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         .maybeSingle();
   }
 
-  /// ✅ UPLOAD IMAGE + UPDATE PROFILE
   Future<void> uploadProfilePic() async {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
@@ -44,7 +41,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final fileName = "avatar_${user.id}.jpg";
 
     try {
-      /// ✅ CORRECT BUCKET NAME
       await Supabase.instance.client.storage
           .from('profile')
           .upload(fileName, file, fileOptions: const FileOptions(upsert: true));
@@ -53,7 +49,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           .from('profile')
           .getPublicUrl(fileName);
 
-      /// ✅ UPDATE USING auth_id (NOT id, NOT email)
       await Supabase.instance.client
           .from('profile')
           .update({'avatar_url': publicUrl})
@@ -63,21 +58,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } catch (error) {
       debugPrint('Upload error: $error');
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Failed to upload image')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Failed to upload image')));
       }
     }
 
     if (mounted) setState(() => uploading = false);
   }
 
-  Future<void> signOut(BuildContext context) async {
+  Future<void> signOut() async {
     await Supabase.instance.client.auth.signOut();
     if (!mounted) return;
+
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const LoginPage()),
-      (route) => false,
+          (_) => false,
+    );
+  }
+  void confirmLogout() {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Logout"),
+        content: const Text("Are you sure you want to logout?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              Navigator.pop(context); // close dialog
+              await signOut();
+            },
+            child: const Text("Logout"),
+          ),
+        ],
+      ),
     );
   }
 
@@ -85,78 +103,112 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     final user = Supabase.instance.client.auth.currentUser;
 
-    if (user == null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('My Profile')),
-        body: const Center(child: Text('No user logged in')),
-      );
-    }
-
     return Scaffold(
+      backgroundColor: Colors.grey.shade100,
       appBar: AppBar(
         title: const Text('My Profile'),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () => signOut(context),
+            onPressed: confirmLogout, // ← changed
           ),
         ],
-      ),
-      body: FutureBuilder<Map<String, dynamic>?>(
-        future: fetchProfile(user.id), // ✅ auth_id match
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
 
-          if (!snapshot.hasData || snapshot.data == null) {
-            return const Center(child: Text("Profile not found"));
+      ),
+      body: user == null
+          ? const Center(child: Text("No user logged in"))
+          : FutureBuilder<Map<String, dynamic>?>(
+        future: fetchProfile(user.id),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
           }
 
           final profile = snapshot.data!;
 
-          return Padding(
-            padding: const EdgeInsets.all(20.0),
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
             child: Column(
               children: [
-                // -------------------------
-                // ✅ Profile Picture
-                // -------------------------
-                CircleAvatar(
-                  radius: 60,
-                  backgroundImage: profile['avatar_url'] != null
-                      ? NetworkImage(profile['avatar_url'])
-                      : null,
-                  child: profile['avatar_url'] == null
-                      ? const Icon(Icons.person, size: 50)
-                      : null,
+                // ---------- Avatar ----------
+                Stack(
+                  alignment: Alignment.bottomRight,
+                  children: [
+                    CircleAvatar(
+                      radius: 65,
+                      backgroundColor: Colors.grey.shade300,
+                      backgroundImage: profile['avatar_url'] != null
+                          ? NetworkImage(profile['avatar_url'])
+                          : null,
+                      child: profile['avatar_url'] == null
+                          ? const Icon(Icons.person, size: 60)
+                          : null,
+                    ),
+                    CircleAvatar(
+                      radius: 22,
+                      backgroundColor: Colors.blue,
+                      child: IconButton(
+                        icon: const Icon(Icons.camera_alt,
+                            color: Colors.white, size: 18),
+                        onPressed: uploading ? null : uploadProfilePic,
+                      ),
+                    ),
+                  ],
                 ),
 
-                const SizedBox(height: 12),
+                const SizedBox(height: 24),
 
-                uploading
-                    ? const CircularProgressIndicator()
-                    : ElevatedButton.icon(
-                        icon: const Icon(Icons.upload),
-                        label: const Text("Upload Profile Picture"),
-                        onPressed: uploadProfilePic,
-                      ),
+                // ---------- Info Card ----------
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(.1),
+                        blurRadius: 6,
+                      )
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _infoRow("Name", profile['name']),
+                      _infoRow("Email", profile['email']),
+                      _infoRow("Role", profile['role']),
+                      _infoRow("Contact", profile['contact']),
+                    ],
+                  ),
+                ),
 
                 const SizedBox(height: 30),
 
-                Text(
-                  'Email: ${profile['email'] ?? 'N/A'}',
-                  style: const TextStyle(fontSize: 18),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Role: ${profile['role'] ?? 'N/A'}',
-                  style: const TextStyle(fontSize: 18),
-                ),
               ],
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _infoRow(String label, String? value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 80,
+            child: Text(label,
+                style:
+                const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          ),
+          Expanded(
+            child: Text(value ?? "—",
+                style: const TextStyle(fontSize: 14)),
+          ),
+        ],
       ),
     );
   }

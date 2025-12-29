@@ -24,53 +24,72 @@ class _HomeScreenState extends State<ClientHomeScreen> {
   String? avatarUrl;
   bool loadingProfile = true;
 
+  int totalAlerts = 0;
+  int pendingAlerts = 0;
+  int resolvedAlerts = 0;
+  int totalWorkers = 0;
+  double avgRating = 0;
+
   @override
   void initState() {
     super.initState();
     fetchProfile();
+    loadAnalytics();
   }
 
   Future<void> fetchProfile() async {
     final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
 
-    if (user == null) {
-      setState(() => loadingProfile = false);
-      return;
+    final response = await Supabase.instance.client
+        .from('profile')
+        .select('name, avatar_url')
+        .eq('auth_id', user.id)
+        .maybeSingle();
+
+    setState(() {
+      name = response?['name'];
+      avatarUrl = response?['avatar_url'];
+      loadingProfile = false;
+    });
+  }
+
+  Future<void> loadAnalytics() async {
+    final alertsRes = await Supabase.instance.client.from('alerts').select();
+    final workersRes = await Supabase.instance.client
+        .from('profile')
+        .select()
+        .eq('role', 'worker');
+    final reviewsRes =
+    await Supabase.instance.client.from('performance_reviews').select();
+
+    final total = alertsRes.length;
+    final pending = alertsRes.where((a) => a['processed'] == false).length;
+    final resolved = alertsRes.where((a) => a['processed'] == true).length;
+
+    double avg = 0;
+    if (reviewsRes.isNotEmpty) {
+      avg = reviewsRes
+          .map((r) => r['rating'] as int)
+          .reduce((a, b) => a + b) /
+          reviewsRes.length;
     }
 
-    try {
-      final response = await Supabase.instance.client
-          .from('profile')
-          .select('name, avatar_url')
-          .eq('auth_id', user.id)
-          .maybeSingle();
-
-      setState(() {
-        name = response?['name'];
-        avatarUrl = response?['avatar_url'];
-        loadingProfile = false;
-      });
-    } catch (e) {
-      setState(() {
-        name = null;
-        avatarUrl = null;
-        loadingProfile = false;
-      });
-    }
+    setState(() {
+      totalAlerts = total;
+      pendingAlerts = pending;
+      resolvedAlerts = resolved;
+      totalWorkers = workersRes.length;
+      avgRating = avg;
+    });
   }
 
   void _navigateToPage(BuildContext context, Widget page, String title) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => Scaffold(
-          backgroundColor: Colors.blue.shade700,
-          appBar: AppBar(
-            title: Text(title),
-            backgroundColor: Colors.blue.shade800,
-            elevation: 0,
-            foregroundColor: Colors.white,
-          ),
+        builder: (_) => Scaffold(
+          appBar: AppBar(title: Text(title)),
           body: page,
         ),
       ),
@@ -82,23 +101,23 @@ class _HomeScreenState extends State<ClientHomeScreen> {
     final displayName = name ?? 'User';
 
     return Scaffold(
-      backgroundColor: Colors.blue.shade900, // 🔵 BLUE BACKGROUND
+      backgroundColor: Colors.blue.shade900,
       appBar: AppBar(
-        title: loadingProfile
-            ? const Text('Loading...')
-            : Text(
-                'Hello, $displayName',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
         backgroundColor: Colors.blue.shade800,
         elevation: 1,
         foregroundColor: Colors.white,
+        title: loadingProfile
+            ? const Text("Loading...")
+            : Text(
+          "Hello, $displayName",
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
         actions: [
           Padding(
-            padding: const EdgeInsets.only(right: 12.0),
+            padding: const EdgeInsets.only(right: 12),
             child: GestureDetector(
               onTap: () {
                 Navigator.push(
@@ -120,118 +139,114 @@ class _HomeScreenState extends State<ClientHomeScreen> {
           ),
         ],
       ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: GridView.count(
-            crossAxisCount: 2,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-            childAspectRatio: 1.1,
-            children: [
-              _buildNavButton(
-                icon: Icons.warning_amber_rounded,
-                label: 'Alerts',
-                onTap: () =>
-                    _navigateToPage(context, const AlertsScreen(), 'Alerts'),
-              ),
-              _buildNavButton(
-                icon: Icons.info_outline,
-                label: 'Unit Info',
-                onTap: () => _navigateToPage(
-                  context,
-                  const UnitInfoScreen(),
-                  'Unit Info',
-                ),
-              ),
-              _buildNavButton(
-                icon: Icons.history,
-                label: 'Action & History',
-                onTap: () => _navigateToPage(
-                  context,
-                  const HistoryScreen(),
-                  'Action & History',
-                ),
-              ),
-              _buildNavButton(
-                icon: Icons.person_add,
-                label: 'Add Account',
-                onTap: () => _navigateToPage(
-                  context,
-                  const AddAccount(),
-                  'Add Account',
-                ),
-              ),
-              _buildNavButton(
-                icon: Icons.assignment,
-                label: 'Assign Task',
-                onTap: () => _navigateToPage(context, const AssignTaskScreen(), 'Assign Task'),
-              ),
-              _buildNavButton(
-                icon: Icons.bar_chart,
-                label: 'Performance Review',
-                onTap: () =>
-                    _navigateToPage(context, const PerformanceReviewPage(), 'Performance Review'),
-              ),
-              _buildNavButton(
-                icon: Icons.description,
-                label: 'View Reports',
-                onTap: () => _navigateToPage(context, const ViewReportsPage(), 'View Reports'),
-              ),
 
-              _buildNavButton(
-                icon: Icons.people,
-                label: 'View Users',
-                onTap: () =>
-                    _navigateToPage(context, const ProfilePage(), 'Users'),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            _buildDashboard(),
+            const SizedBox(height: 12),
+
+            Expanded(
+              child: GridView.count(
+                crossAxisCount: 2,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+                childAspectRatio: 1.1,
+                children: [
+                  _buildNavButton(Icons.warning, "Alerts",
+                          () => _navigateToPage(context, const AlertsScreen(), "Alerts")),
+                  _buildNavButton(Icons.info, "Unit Info",
+                          () => _navigateToPage(context, const UnitInfoScreen(), "Unit Info")),
+                  _buildNavButton(Icons.history, "History",
+                          () => _navigateToPage(context, const HistoryScreen(), "History")),
+                  _buildNavButton(Icons.person_add, "Add Account",
+                          () => _navigateToPage(context, const AddAccount(), "Add Account")),
+                  _buildNavButton(Icons.assignment, "Assign Task",
+                          () => _navigateToPage(context, const AssignTaskScreen(), "Assign Task")),
+                  _buildNavButton(Icons.bar_chart, "Worker Performance",
+                          () => _navigateToPage(context, const PerformanceReviewPage(), "Performance")),
+                  _buildNavButton(Icons.description, "Reports",
+                          () => _navigateToPage(context, const ViewReportsPage(), "Reports")),
+                  _buildNavButton(Icons.people, "Users",
+                          () => _navigateToPage(context, const ProfilePage(), "Users")),
+                  _buildNavButton(Icons.map, "Map",
+                          () => _navigateToPage(context, const DeviceMapScreen(), "Map")),
+                ],
               ),
-              _buildNavButton(
-                icon: Icons.map,
-                label: 'Map',
-                onTap: () =>
-                    _navigateToPage(context, const DeviceMapScreen(), 'Map'),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildNavButton({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
+  Widget _buildDashboard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(.1), blurRadius: 6)],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text("Dashboard",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _stat("Total", totalAlerts),
+              _stat("Pending", pendingAlerts),
+              _stat("Resolved", resolvedAlerts),
+              _stat("Workers", totalWorkers),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              const Icon(Icons.star, color: Colors.amber),
+              const SizedBox(width: 6),
+              Text("Avg Rating: ${avgRating.toStringAsFixed(1)} / 5"),
+            ],
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _stat(String label, int value) {
+    return Column(
+      children: [
+        Text(value.toString(),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        Text(label, style: const TextStyle(fontSize: 12)),
+      ],
+    );
+  }
+
+  Widget _buildNavButton(IconData icon, String label, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 26, horizontal: 12),
         decoration: BoxDecoration(
-          color: Colors.lightBlue.shade100, // 🔹 LIGHT BLUE OPTIONS
+          color: Colors.lightBlue.shade100,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.15),
-              blurRadius: 6,
-              offset: const Offset(0, 3),
-            ),
+            BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 6)
           ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: Colors.blue.shade900, size: 34),
-            const SizedBox(height: 14),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.blue.shade900,
-                fontWeight: FontWeight.w700,
-                fontSize: 16,
-              ),
-            ),
+            Icon(icon, size: 34, color: Colors.blue.shade900),
+            const SizedBox(height: 10),
+            Text(label,
+                style: TextStyle(
+                    color: Colors.blue.shade900,
+                    fontWeight: FontWeight.bold)),
           ],
         ),
       ),
