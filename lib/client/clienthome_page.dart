@@ -8,7 +8,7 @@ import 'alerts_screen.dart';
 import 'device_map_screen.dart';
 import 'history_screen.dart';
 import 'unit_info_screen.dart';
-import 'assign_task_page.dart';
+import 'assign_task_screen.dart';
 import 'performance_review_page.dart';
 import 'view_reports_page.dart';
 
@@ -165,7 +165,7 @@ class _HomeScreenState extends State<ClientHomeScreen> {
               _buildNavButton(
                 icon: Icons.assignment,
                 label: 'Assign Task',
-                onTap: () => _navigateToPage(context, const AssignTaskPage(), 'Assign Task'),
+                onTap: () => _navigateToPage(context, const AssignTaskScreen(), 'Assign Task'),
               ),
               _buildNavButton(
                 icon: Icons.bar_chart,
