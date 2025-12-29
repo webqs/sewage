@@ -40,6 +40,7 @@ class _AddAccountState extends State<addaccounnt> {
       await SupabaseConfig.client.from('profile').insert({
         'auth_id': authId, // store UUID here
         'email': email,
+
         'role': selectedRole.toLowerCase(),
       });
 
@@ -103,6 +104,22 @@ class _AddAccountState extends State<addaccounnt> {
                     ),
                   ),
                 ),
+
+                const SizedBox(height: 20),
+
+                // Password
+                TextField(
+                  controller: passwordController,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    labelText: "name",
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+
+
                 const SizedBox(height: 20),
 
                 // Role Selector

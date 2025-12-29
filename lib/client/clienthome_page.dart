@@ -8,6 +8,9 @@ import 'alerts_screen.dart';
 import 'device_map_screen.dart';
 import 'history_screen.dart';
 import 'unit_info_screen.dart';
+import 'assign_task_page.dart';
+import 'performance_review_page.dart';
+import 'view_reports_page.dart';
 
 class ClientHomeScreen extends StatefulWidget {
   const ClientHomeScreen({super.key});
@@ -155,10 +158,27 @@ class _HomeScreenState extends State<ClientHomeScreen> {
                 label: 'Add Account',
                 onTap: () => _navigateToPage(
                   context,
-                  const addaccounnt(),
+                  const AddAccount(),
                   'Add Account',
                 ),
               ),
+              _buildNavButton(
+                icon: Icons.assignment,
+                label: 'Assign Task',
+                onTap: () => _navigateToPage(context, const AssignTaskPage(), 'Assign Task'),
+              ),
+              _buildNavButton(
+                icon: Icons.bar_chart,
+                label: 'Performance Review',
+                onTap: () =>
+                    _navigateToPage(context, const PerformanceReviewPage(), 'Performance Review'),
+              ),
+              _buildNavButton(
+                icon: Icons.description,
+                label: 'View Reports',
+                onTap: () => _navigateToPage(context, const ViewReportsPage(), 'View Reports'),
+              ),
+
               _buildNavButton(
                 icon: Icons.people,
                 label: 'View Users',
