@@ -160,7 +160,11 @@ class _HomeScreenState extends State<WorkerHomeScreen> {
                   'Action & History',
                 ),
               ),
-
+              _buildNavButton(
+                icon: Icons.assignment_turned_in,
+                label: 'My Tasks',
+                onTap: () => _navigateToPage(context, const WorkerTaskScreen(), 'My Tasks'),
+              ),
 
               _buildNavButton(
                 icon: Icons.map,
