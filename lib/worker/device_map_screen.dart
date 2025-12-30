@@ -47,11 +47,12 @@ class _DeviceMapScreenState extends State<DeviceMapScreen> {
       body: devices.isEmpty || mapCenter == null
           ? const Center(child: CircularProgressIndicator())
           : FlutterMap(
-              options: MapOptions(
-                center: mapCenter, // Center on first device
-                zoom: 13,
-              ),
-              children: [
+        options: MapOptions(
+          initialCenter: mapCenter!,
+          initialZoom: 13,
+        ),
+
+        children: [
                 TileLayer(
                   urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
                   userAgentPackageName: 'com.example.yourapp',

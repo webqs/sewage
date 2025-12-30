@@ -43,5 +43,5 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-stdlib:1.9.22")
 
     // ⭐ REQUIRED — Fixes flutter_local_notifications build error
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")  // 🔥 FIX #3
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")  // 🔥 FIX #3
 }
