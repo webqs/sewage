@@ -13,8 +13,6 @@ class _PerformanceReviewPageState extends State<PerformanceReviewPage> {
   final supabase = Supabase.instance.client;
 
   List tasks = [];
-  final Map<String, int> ratings = {};
-  final Map<String, TextEditingController> comments = {};
 
   @override
   void initState() {
@@ -56,34 +54,6 @@ class _PerformanceReviewPageState extends State<PerformanceReviewPage> {
     );
   }
 
-  // ---------------- SUBMIT ----------------
-
-  Future<void> submitReview(Map task) async {
-    final worker = task['profile'];
-    final alertId = task['id'];
-    final workerId = worker['auth_id'];
-    final userId = supabase.auth.currentUser!.id;
-
-    final rating = ratings[alertId] ?? 3;
-    final comment = comments[alertId]?.text;
-
-    await supabase.from('performance_reviews').insert({
-      'alert_id': alertId,
-      'worker_id': workerId,
-      'rating': rating,
-      'comment': comment,
-      'reviewed_by': userId,
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Review submitted successfully")),
-    );
-
-    ratings.remove(alertId);
-    comments.remove(alertId);
-    loadTasks();
-  }
-
   // ---------------- UI ----------------
 
   @override
@@ -98,9 +68,6 @@ class _PerformanceReviewPageState extends State<PerformanceReviewPage> {
               itemBuilder: (context, index) {
                 final task = tasks[index];
                 final worker = task['profile'];
-                final alertId = task['id'];
-
-                comments.putIfAbsent(alertId, () => TextEditingController());
 
                 return Card(
                   elevation: 3,
@@ -132,54 +99,6 @@ class _PerformanceReviewPageState extends State<PerformanceReviewPage> {
                         Text("Task Status: ${task['status']}"),
                         Text("Location: ${task['location'] ?? 'N/A'}"),
                         Text("Completed: ${formatTime(task['created_at'])}"),
-
-                        const Divider(height: 24),
-
-                        // Rating
-                        const Text(
-                          "Rate Performance",
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        Row(
-                          children: List.generate(5, (i) {
-                            final value = i + 1;
-                            return IconButton(
-                              icon: Icon(
-                                Icons.star_rounded,
-                                color: (ratings[alertId] ?? 3) >= value
-                                    ? Colors.amber
-                                    : Colors.grey,
-                              ),
-                              onPressed: () =>
-                                  setState(() => ratings[alertId] = value),
-                            );
-                          }),
-                        ),
-
-                        // Comment
-                        TextField(
-                          controller: comments[alertId],
-                          maxLines: 2,
-                          decoration: InputDecoration(
-                            hintText: "Add optional feedback",
-                            filled: true,
-                            fillColor: Colors.grey.shade100,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 12),
-
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            icon: const Icon(Icons.send),
-                            label: const Text("Submit Review"),
-                            onPressed: () => submitReview(task),
-                          ),
-                        ),
                       ],
                     ),
                   ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import 'alert_detail_screen.dart';
 
 class AssignTaskScreen extends StatefulWidget {
@@ -50,7 +51,6 @@ class _AssignTaskScreenState extends State<AssignTaskScreen> {
         "$hour:$minute $period";
   }
 
-
   // ---------------- DATA ----------------
 
   Future<void> loadData() async {
@@ -61,8 +61,10 @@ class _AssignTaskScreenState extends State<AssignTaskScreen> {
         .eq('processed', false)
         .order('created_at', ascending: false);
 
-    final workersData =
-    await supabase.from('profile').select().eq('role', 'worker');
+    final workersData = await supabase
+        .from('profile')
+        .select()
+        .eq('role', 'worker');
 
     setState(() {
       alerts = alertsData;
@@ -71,10 +73,13 @@ class _AssignTaskScreenState extends State<AssignTaskScreen> {
   }
 
   Future<void> assignTask(String alertId, String workerId) async {
-    await supabase.from('alerts').update({
-      'assigned_worker_id': workerId,
-      'assigned_at': DateTime.now().toIso8601String(),
-    }).eq('id', alertId);
+    await supabase
+        .from('alerts')
+        .update({
+          'assigned_worker_id': workerId,
+          'assigned_at': DateTime.now().toIso8601String(),
+        })
+        .eq('id', alertId);
 
     loadData();
   }
@@ -84,7 +89,6 @@ class _AssignTaskScreenState extends State<AssignTaskScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Assign Task")),
       body: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: alerts.length,
@@ -108,7 +112,8 @@ class _AssignTaskScreenState extends State<AssignTaskScreen> {
             child: Card(
               elevation: 3,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+                borderRadius: BorderRadius.circular(12),
+              ),
               margin: const EdgeInsets.only(bottom: 16),
               child: Padding(
                 padding: const EdgeInsets.all(14),
@@ -122,11 +127,15 @@ class _AssignTaskScreenState extends State<AssignTaskScreen> {
                         Text(
                           status,
                           style: const TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold),
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 4),
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: severityColor(severity),
                             borderRadius: BorderRadius.circular(20),
@@ -134,7 +143,9 @@ class _AssignTaskScreenState extends State<AssignTaskScreen> {
                           child: Text(
                             severity.toUpperCase(),
                             style: const TextStyle(
-                                color: Colors.white, fontSize: 12),
+                              color: Colors.white,
+                              fontSize: 12,
+                            ),
                           ),
                         ),
                       ],
