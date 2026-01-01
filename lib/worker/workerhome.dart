@@ -165,7 +165,11 @@ class _HomeScreenState extends State<WorkerHomeScreen> {
                 label: 'My Tasks',
                 onTap: () => _navigateToPage(context, const WorkerTaskScreen(), 'My Tasks'),
               ),
-
+              _buildNavButton(
+                icon: Icons.star,
+                label: 'My Performance',
+                onTap: () => _navigateToPage(context, const WorkerReviewScreen(), 'My Performance'),
+              ),
               _buildNavButton(
                 icon: Icons.map,
                 label: 'Map',
