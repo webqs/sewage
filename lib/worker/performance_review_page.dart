@@ -2,109 +2,206 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class PerformanceReviewPage extends StatefulWidget {
-  const PerformanceReviewPage({super.key});
+class WorkerReviewScreen extends StatefulWidget {
+  const WorkerReviewScreen({super.key});
 
   @override
-  State<PerformanceReviewPage> createState() => _PerformanceReviewPageState();
+  State<WorkerReviewScreen> createState() => _WorkerReviewScreenState();
 }
 
-class _PerformanceReviewPageState extends State<PerformanceReviewPage> {
+class _WorkerReviewScreenState extends State<WorkerReviewScreen> {
   final supabase = Supabase.instance.client;
 
-  List tasks = [];
+  List<Map<String, dynamic>> reviews = [];
+
+  double avgRating = 0;
+  int totalReviews = 0;
 
   @override
   void initState() {
     super.initState();
-    loadTasks();
+    loadReviews();
   }
 
-  // ---------------- DATA ----------------
+  Future<void> loadReviews() async {
+    final user = supabase.auth.currentUser;
+    if (user == null) return;
 
-  Future<void> loadTasks() async {
+    // 1. Fetch reviews for this worker
     final res = await supabase
-        .from('alerts')
-        .select('*, profile!alerts_assigned_worker_id_fkey(name, auth_id)')
-        .eq('processed', true)
-        .not('assigned_worker_id', 'is', null)
+        .from('performance_reviews')
+        .select()
+        .eq('worker_id', user.id)
         .order('created_at', ascending: false);
 
-    setState(() => tasks = res);
+    if (res.isEmpty) {
+      setState(() {
+        reviews = [];
+        avgRating = 0;
+        totalReviews = 0;
+      });
+      return;
+    }
+
+    // 2. Collect reviewer ids
+    final reviewerIds =
+    res.map((r) => r['reviewed_by'] as String).toSet().toList();
+
+    // 3. Fetch reviewer names
+    final reviewerProfiles = await supabase
+        .from('profile')
+        .select('auth_id, name')
+        .inFilter('auth_id', reviewerIds);
+
+    final reviewerMap = {
+      for (var p in reviewerProfiles) p['auth_id']: p['name']
+    };
+
+    // 4. Attach names & calculate stats
+    double sum = 0;
+    for (var r in res) {
+      sum += (r['rating'] as int);
+      r['reviewer_name'] = reviewerMap[r['reviewed_by']] ?? "Client";
+    }
+
+    setState(() {
+      reviews = List<Map<String, dynamic>>.from(res);
+      totalReviews = res.length;
+      avgRating = sum / res.length;
+    });
   }
 
-  // ---------------- HELPERS ----------------
-
-  String formatTime(String raw) {
+  String formatDate(String raw) {
     final dt = DateTime.parse(raw).toLocal();
-    return DateFormat('MMM d, yyyy  •  h:mm a').format(dt);
+    return DateFormat('MMM d, yyyy • h:mm a').format(dt);
   }
 
-  Widget statusBadge() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.green,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: const Text(
-        "COMPLETED",
-        style: TextStyle(color: Colors.white, fontSize: 12),
-      ),
+  Widget buildStars(double rating) {
+    return Row(
+      children: List.generate(5, (i) {
+        return Icon(
+          Icons.star_rounded,
+          size: 20,
+          color: i < rating.round() ? Colors.amber : Colors.grey.shade300,
+        );
+      }),
     );
   }
-
-  // ---------------- UI ----------------
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey.shade100,
-      body: tasks.isEmpty
-          ? const Center(child: Text("No completed tasks available"))
-          : ListView.builder(
-              padding: const EdgeInsets.all(12),
-              itemCount: tasks.length,
+      backgroundColor: const Color(0xfff4f6fb),
+      appBar: AppBar(title: const Text("My Performance")),
+      body: reviews.isEmpty
+          ? const Center(child: Text("No reviews yet"))
+          : Column(
+        children: [
+          // Summary
+          Container(
+            margin: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: .06),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                )
+              ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text("Overall Rating",
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 14)),
+                    const SizedBox(height: 6),
+                    Text(avgRating.toStringAsFixed(1),
+                        style: const TextStyle(
+                            fontSize: 32, fontWeight: FontWeight.bold)),
+                    buildStars(avgRating),
+                  ],
+                ),
+                Column(
+                  children: [
+                    const Text("Total Reviews",
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 6),
+                    Text(totalReviews.toString(),
+                        style: const TextStyle(
+                            fontSize: 24, fontWeight: FontWeight.bold)),
+                  ],
+                )
+              ],
+            ),
+          ),
+
+          // Reviews
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              itemCount: reviews.length,
               itemBuilder: (context, index) {
-                final task = tasks[index];
-                final worker = task['profile'];
+                final r = reviews[index];
 
-                return Card(
-                  elevation: 3,
+                return Container(
                   margin: const EdgeInsets.only(bottom: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: .05),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      )
+                    ],
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(14),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Header
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              "Worker: ${worker['name']}",
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            backgroundColor: Colors.amber,
+                            child: Text(r['rating'].toString(),
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold)),
+                          ),
+                          const SizedBox(width: 10),
+                          Text("Rating: ${r['rating']} / 5",
                               style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                            statusBadge(),
-                          ],
+                                  fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                      if (r['comment'] != null &&
+                          r['comment'].toString().isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(
+                              top: 10, bottom: 6),
+                          child: Text(r['comment']),
                         ),
-
-                        const SizedBox(height: 6),
-                        Text("Task Status: ${task['status']}"),
-                        Text("Location: ${task['location'] ?? 'N/A'}"),
-                        Text("Completed: ${formatTime(task['created_at'])}"),
-                      ],
-                    ),
+                      Text("Reviewed by ${r['reviewer_name']}",
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w500)),
+                      Text("Reviewed on ${formatDate(r['created_at'])}",
+                          style: const TextStyle(
+                              fontSize: 12, color: Colors.grey)),
+                    ],
                   ),
                 );
               },
             ),
+          ),
+        ],
+      ),
     );
   }
 }

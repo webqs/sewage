@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:sewage/client/performance_review_page.dart';
 import 'package:sewage/worker/send_report_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -236,7 +237,7 @@ class _HomeScreenState extends State<WorkerHomeScreen> {
                       label: 'Performance',
                       onTap: () => _navigateToPage(
                         context,
-                        const PerformanceReviewPage(),
+                        const WorkerReviewScreen(),
                         'Performance',
                       ),
                     ),
