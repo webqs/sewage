@@ -44,8 +44,10 @@ class _WorkerReviewScreenState extends State<WorkerReviewScreen> {
     }
 
     // 2. Collect reviewer ids
-    final reviewerIds =
-    res.map((r) => r['reviewed_by'] as String).toSet().toList();
+    final reviewerIds = res
+        .map((r) => r['reviewed_by'] as String)
+        .toSet()
+        .toList();
 
     // 3. Fetch reviewer names
     final reviewerProfiles = await supabase
@@ -54,7 +56,7 @@ class _WorkerReviewScreenState extends State<WorkerReviewScreen> {
         .inFilter('auth_id', reviewerIds);
 
     final reviewerMap = {
-      for (var p in reviewerProfiles) p['auth_id']: p['name']
+      for (var p in reviewerProfiles) p['auth_id']: p['name'],
     };
 
     // 4. Attach names & calculate stats
@@ -92,116 +94,144 @@ class _WorkerReviewScreenState extends State<WorkerReviewScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xfff4f6fb),
-      appBar: AppBar(title: const Text("My Performance")),
       body: reviews.isEmpty
           ? const Center(child: Text("No reviews yet"))
           : Column(
-        children: [
-          // Summary
-          Container(
-            margin: const EdgeInsets.all(14),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: .06),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                )
-              ],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text("Overall Rating",
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 14)),
-                    const SizedBox(height: 6),
-                    Text(avgRating.toStringAsFixed(1),
-                        style: const TextStyle(
-                            fontSize: 32, fontWeight: FontWeight.bold)),
-                    buildStars(avgRating),
-                  ],
-                ),
-                Column(
-                  children: [
-                    const Text("Total Reviews",
-                        style: TextStyle(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 6),
-                    Text(totalReviews.toString(),
-                        style: const TextStyle(
-                            fontSize: 24, fontWeight: FontWeight.bold)),
-                  ],
-                )
-              ],
-            ),
-          ),
-
-          // Reviews
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              itemCount: reviews.length,
-              itemBuilder: (context, index) {
-                final r = reviews[index];
-
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(14),
+                // Summary
+                Container(
+                  margin: const EdgeInsets.all(14),
+                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: .05),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
-                      )
+                        color: Colors.black.withValues(alpha: .06),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
                     ],
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          CircleAvatar(
-                            backgroundColor: Colors.amber,
-                            child: Text(r['rating'].toString(),
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold)),
+                          const Text(
+                            "Overall Rating",
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
                           ),
-                          const SizedBox(width: 10),
-                          Text("Rating: ${r['rating']} / 5",
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 6),
+                          Text(
+                            avgRating.toStringAsFixed(1),
+                            style: const TextStyle(
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          buildStars(avgRating),
                         ],
                       ),
-                      if (r['comment'] != null &&
-                          r['comment'].toString().isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(
-                              top: 10, bottom: 6),
-                          child: Text(r['comment']),
-                        ),
-                      Text("Reviewed by ${r['reviewer_name']}",
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w500)),
-                      Text("Reviewed on ${formatDate(r['created_at'])}",
-                          style: const TextStyle(
-                              fontSize: 12, color: Colors.grey)),
+                      Column(
+                        children: [
+                          const Text(
+                            "Total Reviews",
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            totalReviews.toString(),
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
-                );
-              },
+                ),
+
+                // Reviews
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    itemCount: reviews.length,
+                    itemBuilder: (context, index) {
+                      final r = reviews[index];
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: .05),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                CircleAvatar(
+                                  backgroundColor: Colors.amber,
+                                  child: Text(
+                                    r['rating'].toString(),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Text(
+                                  "Rating: ${r['rating']} / 5",
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (r['comment'] != null &&
+                                r['comment'].toString().isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(
+                                  top: 10,
+                                  bottom: 6,
+                                ),
+                                child: Text(r['comment']),
+                              ),
+                            Text(
+                              "Reviewed by ${r['reviewer_name']}",
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            Text(
+                              "Reviewed on ${formatDate(r['created_at'])}",
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
-      ),
     );
   }
 }

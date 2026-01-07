@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../supabase_config.dart';
 
 class AddAccount extends StatefulWidget {
@@ -21,9 +22,9 @@ class _AddAccountState extends State<AddAccount> {
         passwordController.text.isEmpty ||
         nameController.text.isEmpty ||
         contactController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please fill all fields")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Please fill all fields")));
       return;
     }
 
@@ -51,9 +52,9 @@ class _AddAccountState extends State<AddAccount> {
 
       Navigator.pop(context);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
     }
 
     setState(() => loading = false);
@@ -62,7 +63,6 @@ class _AddAccountState extends State<AddAccount> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Add Worker Account")),
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: SingleChildScrollView(
