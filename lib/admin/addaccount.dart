@@ -67,6 +67,10 @@ class _AddAccountState extends State<addaccounnt> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[100],
+      appBar: AppBar(
+        title: const Text("Add Account"),
+        backgroundColor: Colors.blue,
+      ),
       body: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Center(
@@ -119,7 +123,6 @@ class _AddAccountState extends State<addaccounnt> {
                   ),
                 ),
 
-
                 const SizedBox(height: 20),
 
                 // Role Selector
@@ -132,7 +135,10 @@ class _AddAccountState extends State<addaccounnt> {
                     labelText: "Select Role",
                   ),
                   items: const [
-                    DropdownMenuItem(value: "Supervisor", child: Text("Supervisor")),
+                    DropdownMenuItem(
+                      value: "Supervisor",
+                      child: Text("Supervisor"),
+                    ),
                     DropdownMenuItem(value: "Worker", child: Text("Worker")),
                   ],
                   onChanged: (value) {

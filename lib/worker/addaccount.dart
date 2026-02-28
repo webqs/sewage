@@ -66,6 +66,7 @@ class _AddAccountState extends State<addaccounnt> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[100],
+      appBar: AppBar(title: const Text("Add Account")),
       body: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Center(

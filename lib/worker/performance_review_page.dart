@@ -94,6 +94,8 @@ class _WorkerReviewScreenState extends State<WorkerReviewScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xfff4f6fb),
+      appBar: AppBar(
+        title: const Text("Perfomance Review"),),
       body: reviews.isEmpty
           ? const Center(child: Text("No reviews yet"))
           : Column(

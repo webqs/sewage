@@ -58,17 +58,25 @@ class _UnitInfoScreenState extends State<UnitInfoScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: Colors.white, // 🔥 FORCE WHITE BACKGROUND
-      child: _units.isEmpty
-          ? const Center(child: CircularProgressIndicator())
-          : ListView.builder(
-              padding: const EdgeInsets.all(12),
-              itemCount: _units.length,
-              itemBuilder: (context, index) {
-                return _buildUnitCard(_units[index]);
-              },
-            ),
+    return Scaffold(
+      backgroundColor: Colors.grey.shade100,
+      appBar: AppBar(
+        title: const Text("Unit Information"),
+        backgroundColor: Colors.blue,
+        elevation: 2,
+      ),
+      body: Container(
+        color: Colors.white,
+        child: _units.isEmpty
+            ? const Center(child: CircularProgressIndicator())
+            : ListView.builder(
+                padding: const EdgeInsets.all(12),
+                itemCount: _units.length,
+                itemBuilder: (context, index) {
+                  return _buildUnitCard(_units[index]);
+                },
+              ),
+      ),
     );
   }
 

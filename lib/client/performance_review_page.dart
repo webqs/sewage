@@ -98,6 +98,7 @@ class _PerformanceReviewPageState extends State<PerformanceReviewPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xfff4f6fb),
+      appBar: AppBar(title: const Text("Perfomance Review")),
       body: tasks.isEmpty
           ? const Center(child: Text("No completed tasks available"))
           : ListView.builder(
@@ -184,7 +185,7 @@ class _PerformanceReviewPageState extends State<PerformanceReviewPage> {
                                   );
                                 },
                                 errorBuilder: (_, __, ___) =>
-                                const Text("Image failed to load"),
+                                    const Text("Image failed to load"),
                               ),
                             ),
                           ),

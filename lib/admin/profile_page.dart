@@ -31,12 +31,11 @@ class _ProfilePageState extends State<ProfilePage> {
     final response = selectedRole == "All"
         ? await query.order('created_at', ascending: false)
         : await query
-        .eq('role', selectedRole)
-        .order('created_at', ascending: false);
+              .eq('role', selectedRole)
+              .order('created_at', ascending: false);
 
     return List<Map<String, dynamic>>.from(response);
   }
-
 
   Future<void> _refresh() async {
     setState(() {
@@ -50,10 +49,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> updateRole(int id, String newRole) async {
-    await supabase
-        .from('profile')
-        .update({'role': newRole})
-        .eq('id', id);
+    await supabase.from('profile').update({'role': newRole}).eq('id', id);
 
     _refresh();
   }
@@ -63,9 +59,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
     showModalBottomSheet(
       context: context,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       builder: (_) {
         return Padding(
           padding: const EdgeInsets.all(20),
@@ -81,12 +75,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 value: currentRole,
                 items: roles
                     .where((r) => r != "All")
-                    .map(
-                      (r) => DropdownMenuItem(
-                    value: r,
-                    child: Text(r),
-                  ),
-                )
+                    .map((r) => DropdownMenuItem(value: r, child: Text(r)))
                     .toList(),
                 onChanged: (value) {
                   tempRole = value!;
@@ -99,7 +88,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   updateRole(id, tempRole);
                 },
                 child: const Text("Save"),
-              )
+              ),
             ],
           ),
         );
@@ -124,10 +113,9 @@ class _ProfilePageState extends State<ProfilePage> {
             child: DropdownButton<String>(
               value: selectedRole,
               items: roles
-                  .map((role) => DropdownMenuItem(
-                value: role,
-                child: Text(role),
-              ))
+                  .map(
+                    (role) => DropdownMenuItem(value: role, child: Text(role)),
+                  )
                   .toList(),
               onChanged: (value) {
                 setState(() {
@@ -137,10 +125,7 @@ class _ProfilePageState extends State<ProfilePage> {
               },
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _refresh,
-          ),
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _refresh),
         ],
       ),
       body: FutureBuilder<List<Map<String, dynamic>>>(
@@ -194,15 +179,12 @@ class _ProfilePageState extends State<ProfilePage> {
                       children: [
                         IconButton(
                           icon: const Icon(Icons.edit, color: Colors.blue),
-                          onPressed: () => _showEditDialog(
-                            profile['id'],
-                            profile['role'],
-                          ),
+                          onPressed: () =>
+                              _showEditDialog(profile['id'], profile['role']),
                         ),
                         IconButton(
                           icon: const Icon(Icons.delete, color: Colors.red),
-                          onPressed: () =>
-                              deleteProfile(profile['id']),
+                          onPressed: () => deleteProfile(profile['id']),
                         ),
                       ],
                     ),

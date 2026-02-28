@@ -63,6 +63,7 @@ class _AddAccountState extends State<AddAccount> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(title: const Text("Alert")),
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: SingleChildScrollView(

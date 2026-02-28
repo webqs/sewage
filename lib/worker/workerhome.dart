@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:sewage/worker/send_report_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'Profie.dart';
 import 'alerts_screen.dart';
 import 'device_map_screen.dart';
 import 'history_screen.dart';
+import 'performance_review_page.dart';
 import 'unit_info_screen.dart';
 import 'worker_task_screen.dart';
-import 'performance_review_page.dart';
-import 'Profie.dart';
 
 class WorkerHomeScreen extends StatefulWidget {
   const WorkerHomeScreen({super.key});
@@ -66,16 +66,13 @@ class _WorkerHomeScreenState extends State<WorkerHomeScreen> {
         .eq('worker_id', user.id);
 
     final total = alertsRes.length;
-    final pending =
-        alertsRes.where((a) => a['processed'] == false).length;
-    final resolved =
-        alertsRes.where((a) => a['processed'] == true).length;
+    final pending = alertsRes.where((a) => a['processed'] == false).length;
+    final resolved = alertsRes.where((a) => a['processed'] == true).length;
 
     double avg = 0;
     if (reviewsRes.isNotEmpty) {
-      avg = reviewsRes
-          .map((r) => r['rating'] as int)
-          .reduce((a, b) => a + b) /
+      avg =
+          reviewsRes.map((r) => r['rating'] as int).reduce((a, b) => a + b) /
           reviewsRes.length;
     }
 
@@ -87,17 +84,8 @@ class _WorkerHomeScreenState extends State<WorkerHomeScreen> {
     });
   }
 
-  void _navigateToPage(
-      BuildContext context, Widget page, String title) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => Scaffold(
-          appBar: AppBar(title: Text(title)),
-          body: page,
-        ),
-      ),
-    );
+  void _navigateToPage(BuildContext context, Widget page) {
+    Navigator.push(context, MaterialPageRoute(builder: (_) => page));
   }
 
   @override
@@ -108,11 +96,7 @@ class _WorkerHomeScreenState extends State<WorkerHomeScreen> {
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              Color(0xFF0F2027),
-              Color(0xFF203A43),
-              Color(0xFF2C5364),
-            ],
+            colors: [Color(0xFF0F2027), Color(0xFF203A43), Color(0xFF2C5364)],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -126,8 +110,9 @@ class _WorkerHomeScreenState extends State<WorkerHomeScreen> {
                   padding: const EdgeInsets.all(16),
                   decoration: const BoxDecoration(
                     color: Color(0xFFF4F6F9),
-                    borderRadius:
-                    BorderRadius.vertical(top: Radius.circular(30)),
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(30),
+                    ),
                   ),
                   child: Column(
                     children: [
@@ -149,28 +134,20 @@ class _WorkerHomeScreenState extends State<WorkerHomeScreen> {
 
   Widget _buildHeader(String displayName) {
     return Padding(
-      padding:
-      const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
       child: Row(
-        mainAxisAlignment:
-        MainAxisAlignment.spaceBetween,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Column(
-            crossAxisAlignment:
-            CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                "Welcome 👷",
-                style:
-                TextStyle(color: Colors.white70),
-              ),
+              const Text("Welcome 👷", style: TextStyle(color: Colors.white70)),
               const SizedBox(height: 4),
               Text(
                 displayName,
                 style: const TextStyle(
                   fontSize: 22,
-                  fontWeight:
-                  FontWeight.bold,
+                  fontWeight: FontWeight.bold,
                   color: Colors.white,
                 ),
               ),
@@ -180,19 +157,15 @@ class _WorkerHomeScreenState extends State<WorkerHomeScreen> {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                    builder: (_) =>
-                    const ProfileScreen()),
+                MaterialPageRoute(builder: (_) => const ProfileScreen()),
               ).then((_) => fetchProfile());
             },
             child: CircleAvatar(
               radius: 22,
-              backgroundImage: avatarUrl != null &&
-                  avatarUrl!.isNotEmpty
+              backgroundImage: avatarUrl != null && avatarUrl!.isNotEmpty
                   ? NetworkImage(avatarUrl!)
                   : null,
-              child: avatarUrl == null ||
-                  avatarUrl!.isEmpty
+              child: avatarUrl == null || avatarUrl!.isEmpty
                   ? const Icon(Icons.person)
                   : null,
             ),
@@ -206,74 +179,54 @@ class _WorkerHomeScreenState extends State<WorkerHomeScreen> {
 
   Widget _buildDashboard() {
     return Column(
-      crossAxisAlignment:
-      CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
           "My Performance",
-          style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold),
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
         GridView.count(
           crossAxisCount: 2,
           shrinkWrap: true,
-          physics:
-          const NeverScrollableScrollPhysics(),
+          physics: const NeverScrollableScrollPhysics(),
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
           childAspectRatio: 1.5,
           children: [
-            _statCard("Total Tasks",
-                totalAlerts, Colors.blue),
-            _statCard("Pending",
-                pendingAlerts, Colors.orange),
-            _statCard("Completed",
-                resolvedAlerts, Colors.green),
-            _statCard("Rating",
-                avgRating.toInt(), Colors.purple),
+            _statCard("Total Tasks", totalAlerts, Colors.blue),
+            _statCard("Pending", pendingAlerts, Colors.orange),
+            _statCard("Completed", resolvedAlerts, Colors.green),
+            _statCard("Rating", avgRating.toInt(), Colors.purple),
           ],
         ),
       ],
     );
   }
 
-  Widget _statCard(
-      String title, int value, Color color) {
+  Widget _statCard(String title, int value, Color color) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius:
-        BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(
-            color:
-            Colors.black.withOpacity(0.08),
-            blurRadius: 6,
-          )
+          BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 6),
         ],
       ),
       padding: const EdgeInsets.all(12),
       child: Column(
-        mainAxisAlignment:
-        MainAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
             value.toString(),
             style: TextStyle(
               fontSize: 20,
-              fontWeight:
-              FontWeight.bold,
+              fontWeight: FontWeight.bold,
               color: color,
             ),
           ),
           const SizedBox(height: 6),
-          Text(
-            title,
-            style:
-            const TextStyle(fontSize: 13),
-          ),
+          Text(title, style: const TextStyle(fontSize: 13)),
         ],
       ),
     );
@@ -288,68 +241,66 @@ class _WorkerHomeScreenState extends State<WorkerHomeScreen> {
       mainAxisSpacing: 14,
       childAspectRatio: 0.9,
       children: [
-        _navCard(Icons.warning, "Alerts",
-                () => _navigateToPage(
-                context, const AlertsScreen(), "Alerts")),
-        _navCard(Icons.task, "Task",
-                () => _navigateToPage(
-                context, const WorkerTaskScreen(), "Task")),
-        _navCard(Icons.description, "Report",
-                () => _navigateToPage(
-                context, const SendReportScreen(), "Send Report")),
-        _navCard(Icons.history, "History",
-                () => _navigateToPage(
-                context, const HistoryScreen(), "History")),
-        _navCard(Icons.map, "Map",
-                () => _navigateToPage(
-                context, const DeviceMapScreen(), "Map")),
-        _navCard(Icons.bar_chart, "Performance",
-                () => _navigateToPage(
-                context, const WorkerReviewScreen(), "Performance")),
-        _navCard(Icons.info, "Unit Info",
-                () => _navigateToPage(
-                context, const UnitInfoScreen(), "Unit Info")),
+        _navCard(
+          Icons.warning,
+          "Alerts",
+          () => _navigateToPage(context, const AlertsScreen()),
+        ),
+        _navCard(
+          Icons.task,
+          "Task",
+          () => _navigateToPage(context, const WorkerTaskScreen()),
+        ),
+        _navCard(
+          Icons.description,
+          "Report",
+          () => _navigateToPage(context, const SendReportScreen()),
+        ),
+        _navCard(
+          Icons.history,
+          "History",
+          () => _navigateToPage(context, const HistoryScreen()),
+        ),
+        _navCard(
+          Icons.map,
+          "Map",
+          () => _navigateToPage(context, const DeviceMapScreen()),
+        ),
+        _navCard(
+          Icons.bar_chart,
+          "Performance",
+          () => _navigateToPage(context, const WorkerReviewScreen()),
+        ),
+        _navCard(
+          Icons.info,
+          "Unit Info",
+          () => _navigateToPage(context, const UnitInfoScreen()),
+        ),
       ],
     );
   }
 
-  Widget _navCard(
-      IconData icon,
-      String label,
-      VoidCallback onTap) {
+  Widget _navCard(IconData icon, String label, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius:
-          BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(18),
           boxShadow: [
-            BoxShadow(
-              color:
-              Colors.black.withOpacity(0.08),
-              blurRadius: 6,
-            ),
+            BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 6),
           ],
         ),
-        padding:
-        const EdgeInsets.all(10),
+        padding: const EdgeInsets.all(10),
         child: Column(
-          mainAxisAlignment:
-          MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon,
-                size: 28,
-                color: Colors.blueAccent),
+            Icon(icon, size: 28, color: Colors.blueAccent),
             const SizedBox(height: 8),
             Text(
               label,
-              textAlign:
-              TextAlign.center,
-              style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight:
-                  FontWeight.w500),
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
             ),
           ],
         ),

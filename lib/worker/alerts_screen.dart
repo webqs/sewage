@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../main.dart'; // notifications
+import 'history_screen.dart';
 
 class AlertsScreen extends StatefulWidget {
   const AlertsScreen({super.key});
@@ -129,7 +130,8 @@ class _AlertsScreenState extends State<AlertsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, // 🔥 FORCED WHITE
+      backgroundColor: Colors.white, //
+      appBar: AppBar(title: const Text("Alert")), // 🔥 FORCED WHITE
       body: SafeArea(
         child: Column(
           children: [
@@ -285,9 +287,16 @@ class _AlertsScreenState extends State<AlertsScreen> {
               ),
             ),
           ListTile(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const HistoryScreen()),
+              );
+            },
             leading: Icon(icon, color: iconColor, size: 40),
             title: Text(
-              title,
+              "Your current situation is ${title.isNotEmpty ? title : "Unknown"}",
+              maxLines: 2,
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 color: isCritical ? Colors.red.shade700 : Colors.black87,

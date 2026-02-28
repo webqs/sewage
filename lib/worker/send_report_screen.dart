@@ -95,6 +95,7 @@ class _SendReportScreenState extends State<SendReportScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
+      appBar: AppBar(title: const Text("Send Report")),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(

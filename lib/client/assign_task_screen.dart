@@ -89,6 +89,7 @@ class _AssignTaskScreenState extends State<AssignTaskScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(title: const Text("Assign Task")),
       body: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: alerts.length,
@@ -104,9 +105,7 @@ class _AssignTaskScreenState extends State<AssignTaskScreen> {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => AlertDetailScreen(alert: alert),
-                ),
+                MaterialPageRoute(builder: (_) => AlertsScreen(alert: alert)),
               );
             },
             child: Card(

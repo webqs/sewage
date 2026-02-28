@@ -46,6 +46,7 @@ class _AddReportPageState extends State<AddReportPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(title: const Text("Report")),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
