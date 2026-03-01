@@ -69,86 +69,107 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<Map<String, dynamic>>>(
-      future: _futureProfiles,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F7FA), // soft dashboard color
+      appBar: AppBar(
+        title: const Text("Worker Accounts"),
+        centerTitle: true,
+      ),
+      body: FutureBuilder<List<Map<String, dynamic>>>(
+        future: _futureProfiles,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-        if (snapshot.hasError) {
-          return Center(child: Text("Error: ${snapshot.error}"));
-        }
+          if (snapshot.hasError) {
+            return Center(child: Text("Error: ${snapshot.error}"));
+          }
 
-        final profiles = snapshot.data ?? [];
+          final profiles = snapshot.data ?? [];
 
-        if (profiles.isEmpty) {
-          return const Center(child: Text("No workers found."));
-        }
+          if (profiles.isEmpty) {
+            return const Center(child: Text("No workers found."));
+          }
 
-        return ListView.builder(
-          padding: const EdgeInsets.all(14),
-          itemCount: profiles.length,
-          itemBuilder: (context, index) {
-            final profile = profiles[index];
+          return RefreshIndicator(
+            onRefresh: () async {
+              setState(() {
+                _futureProfiles = fetchProfiles();
+              });
+            },
+            child: ListView.builder(
+              padding: const EdgeInsets.all(14),
+              itemCount: profiles.length,
+              itemBuilder: (context, index) {
+                final profile = profiles[index];
 
-            final id = profile['id'];
-            final email = profile['email'] ?? 'Unknown';
-            final avatar = profile['avatar_url'];
-            final createdAt = formatDate(profile['created_at']);
+                final id = profile['id'];
+                final email = profile['email'] ?? 'Unknown';
+                final avatar = profile['avatar_url'];
+                final createdAt = formatDate(profile['created_at']);
 
-            return Card(
-              elevation: 3,
-              margin: const EdgeInsets.only(bottom: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Row(
-                  children: [
-                    // 🧑 Avatar
-                    CircleAvatar(
-                      radius: 26,
-                      backgroundColor: Colors.blueGrey.shade300,
-                      backgroundImage:
-                      (avatar != null && avatar.isNotEmpty) ? NetworkImage(avatar) : null,
-                      child: (avatar == null || avatar.isEmpty)
-                          ? Text(
-                        email[0].toUpperCase(),
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18),
-                      )
-                          : null,
+                return Card(
+                  elevation: 4,
+                  margin: const EdgeInsets.only(bottom: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 26,
+                          backgroundColor: Colors.blueGrey.shade300,
+                          backgroundImage:
+                          (avatar != null && avatar.isNotEmpty)
+                              ? NetworkImage(avatar)
+                              : null,
+                          child: (avatar == null || avatar.isEmpty)
+                              ? Text(
+                            email[0].toUpperCase(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                            ),
+                          )
+                              : null,
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                email,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold, fontSize: 15),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                "Joined: $createdAt",
+                                style: const TextStyle(
+                                    fontSize: 12, color: Colors.grey),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon:
+                          const Icon(Icons.delete, color: Colors.redAccent),
+                          onPressed: () => _confirmDelete(id, email),
+                        )
+                      ],
                     ),
-
-                    const SizedBox(width: 12),
-
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(email,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold, fontSize: 15)),
-                          const SizedBox(height: 4),
-                          Text("Joined: $createdAt",
-                              style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                        ],
-                      ),
-                    ),
-
-                    IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.red),
-                      onPressed: () => _confirmDelete(id, email),
-                    )
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
+                  ),
+                );
+              },
+            ),
+          );
+        },
+      ),
     );
   }
 }

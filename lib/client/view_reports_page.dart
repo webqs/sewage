@@ -41,70 +41,72 @@ class _ViewReportsPageState extends State<ViewReportsPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (loading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (reports.isEmpty) {
-      return const Center(
+    return Scaffold(
+      backgroundColor: Colors.grey[100], // light background
+      appBar: AppBar(
+        title: const Text("Worker Reports"),
+        centerTitle: true,
+      ),
+      body: loading
+          ? const Center(child: CircularProgressIndicator())
+          : reports.isEmpty
+          ? const Center(
         child: Text(
           "No reports submitted yet",
           style: TextStyle(fontSize: 16, color: Colors.grey),
         ),
-      );
-    }
+      )
+          : RefreshIndicator(
+        onRefresh: loadReports,
+        child: ListView.builder(
+          padding: const EdgeInsets.all(14),
+          itemCount: reports.length,
+          itemBuilder: (context, index) {
+            final r = reports[index];
 
-    return RefreshIndicator(
-      onRefresh: loadReports,
-      child: ListView.builder(
-        padding: const EdgeInsets.all(14),
-        itemCount: reports.length,
-        itemBuilder: (context, index) {
-          final r = reports[index];
-
-          return Card(
-            elevation: 3,
-            margin: const EdgeInsets.only(bottom: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        "Worker Report",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      if (r['created_at'] != null)
-                        Text(
-                          formatTime(r['created_at']),
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey,
+            return Card(
+              elevation: 3,
+              margin: const EdgeInsets.only(bottom: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment:
+                      MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          "Worker Report",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
                           ),
                         ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 8),
-
-                  Text(
-                    r['reports'] ?? "No content",
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                ],
+                        if (r['created_at'] != null)
+                          Text(
+                            formatTime(r['created_at']),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      r['reports'] ?? "No content",
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }
