@@ -226,7 +226,6 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildGrid() {
     return Container(
       padding: const EdgeInsets.all(16),
-      color: Colors.grey,
       child: GridView.count(
         crossAxisCount: 3,
         crossAxisSpacing: 14,

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'admin/home_screen.dart'; // Admin
+import 'admin/home_screen.dart';
 import 'client/clienthome_page.dart';
 import 'signup_page.dart';
 import 'supabase_config.dart';
@@ -21,7 +21,6 @@ class _LoginPageState extends State<LoginPage> {
   bool loading = false;
   bool passwordVisible = false;
 
-  // 🔹 AUTO LOGIN
   @override
   void initState() {
     super.initState();
@@ -34,7 +33,6 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  // 🔹 ROLE BASED REDIRECT (SAFE)
   Future<void> redirectBasedOnRole(String userId) async {
     try {
       final data = await SupabaseConfig.client
@@ -46,9 +44,7 @@ class _LoginPageState extends State<LoginPage> {
       if (data == null) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Profile not found. Please contact administrator."),
-          ),
+          const SnackBar(content: Text("Profile not found")),
         );
         return;
       }
@@ -82,7 +78,6 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  // 🔹 LOGIN FUNCTION
   Future<void> login() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -113,123 +108,161 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100],
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              children: [
-                Text(
-                  "Welcome ",
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 40),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Color(0xFF0F2027),
+              Color(0xFF203A43),
+              Color(0xFF2C5364),
+            ],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Card(
+              elevation: 10,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(28),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
 
-                // EMAIL
-                TextFormField(
-                  controller: emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: InputDecoration(
-                    labelText: "Email",
-                    prefixIcon: const Icon(Icons.email_outlined),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return "Email cannot be empty";
-                    }
-                    if (!value.contains("@")) {
-                      return "Enter a valid email";
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 20),
-
-                // PASSWORD
-                TextFormField(
-                  controller: passwordController,
-                  obscureText: !passwordVisible,
-                  decoration: InputDecoration(
-                    labelText: "Password",
-                    prefixIcon: const Icon(Icons.lock_outline),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        passwordVisible
-                            ? Icons.visibility
-                            : Icons.visibility_off,
+                      /// APP ICON
+                      const Icon(
+                        Icons.water_damage,
+                        size: 60,
+                        color: Colors.blue,
                       ),
-                      onPressed: () {
-                        setState(() {
-                          passwordVisible = !passwordVisible;
-                        });
-                      },
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return "Password cannot be empty";
-                    }
-                    if (value.length < 6) {
-                      return "Password must be at least 6 characters";
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 30),
 
-                // LOGIN BUTTON
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: ElevatedButton(
-                    onPressed: loading ? null : login,
-                    style: ElevatedButton.styleFrom(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                      const SizedBox(height: 10),
+
+                      Text(
+                        "Sewage Monitoring",
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineSmall
+                            ?.copyWith(fontWeight: FontWeight.bold),
                       ),
-                    ),
-                    child: loading
-                        ? const SizedBox(
-                            height: 22,
-                            width: 22,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
+
+                      const SizedBox(height: 30),
+
+                      /// EMAIL FIELD
+                      TextFormField(
+                        controller: emailController,
+                        decoration: InputDecoration(
+                          labelText: "Email",
+                          prefixIcon: const Icon(Icons.email),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return "Email cannot be empty";
+                          }
+                          if (!value.contains("@")) {
+                            return "Enter a valid email";
+                          }
+                          return null;
+                        },
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      /// PASSWORD FIELD
+                      TextFormField(
+                        controller: passwordController,
+                        obscureText: !passwordVisible,
+                        decoration: InputDecoration(
+                          labelText: "Password",
+                          prefixIcon: const Icon(Icons.lock),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              passwordVisible
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
                             ),
+                            onPressed: () {
+                              setState(() {
+                                passwordVisible = !passwordVisible;
+                              });
+                            },
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return "Password cannot be empty";
+                          }
+                          if (value.length < 6) {
+                            return "Password must be at least 6 characters";
+                          }
+                          return null;
+                        },
+                      ),
+
+                      const SizedBox(height: 30),
+
+                      /// LOGIN BUTTON
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: ElevatedButton(
+                          onPressed: loading ? null : login,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: loading
+                              ? const CircularProgressIndicator(
+                            color: Colors.white,
                           )
-                        : const Text("Login"),
+                              : const Text(
+                            "Login",
+                            style: TextStyle(fontSize: 16),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 15),
+
+                      /// SIGNUP
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text("Don't have an account?"),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const SignupPage(),
+                                ),
+                              );
+                            },
+                            child: const Text("Sign Up"),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-
-                const SizedBox(height: 20),
-
-                // SIGNUP
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text("Don't have an account?"),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const SignupPage()),
-                        );
-                      },
-                      child: const Text("Sign Up"),
-                    ),
-                  ],
-                ),
-              ],
+              ),
             ),
           ),
         ),
