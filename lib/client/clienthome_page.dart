@@ -118,6 +118,8 @@ class _HomeScreenState extends State<ClientHomeScreen> {
                     children: [
                       _buildDashboard(),
                       const SizedBox(height: 20),
+                      _quickActions(),
+                      const SizedBox(height: 20),
                       Expanded(child: _buildGrid()),
                     ],
                   ),
@@ -189,6 +191,7 @@ class _HomeScreenState extends State<ClientHomeScreen> {
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
+
         GridView.count(
           crossAxisCount: 2,
           shrinkWrap: true,
@@ -197,19 +200,21 @@ class _HomeScreenState extends State<ClientHomeScreen> {
           mainAxisSpacing: 12,
           childAspectRatio: 1.5,
           children: [
-            _statCard("Total Alerts", totalAlerts, Colors.blue),
-            _statCard("Pending", pendingAlerts, Colors.orange),
-            _statCard("Resolved", resolvedAlerts, Colors.green),
-            _statCard("Workers", totalWorkers, Colors.purple),
+            _statCard("Total Alerts", totalAlerts, Icons.warning, Colors.blue),
+            _statCard("Pending", pendingAlerts, Icons.error_outline, Colors.orange),
+            _statCard("Resolved", resolvedAlerts, Icons.check_circle, Colors.green),
+            _statCard("Workers", totalWorkers, Icons.people, Colors.purple),
           ],
         ),
-        const SizedBox(height: 10),
+
+        const SizedBox(height: 14),
+
         Row(
           children: [
             const Icon(Icons.star, color: Colors.amber),
             const SizedBox(width: 6),
             Text(
-              "Average Rating: ${avgRating.toStringAsFixed(1)} / 5",
+              "Average Worker Rating: ${avgRating.toStringAsFixed(1)} / 5",
               style: const TextStyle(fontWeight: FontWeight.w500),
             ),
           ],
@@ -218,31 +223,77 @@ class _HomeScreenState extends State<ClientHomeScreen> {
     );
   }
 
-  Widget _statCard(String title, int value, Color color) {
+  Widget _statCard(String title, int value, IconData icon, Color color) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 6),
         ],
       ),
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+      padding: const EdgeInsets.all(14),
+      child: Row(
         children: [
-          Text(
-            value.toString(),
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
+          CircleAvatar(
+            backgroundColor: color.withOpacity(0.15),
+            child: Icon(icon, color: color),
           ),
-          const SizedBox(height: 6),
-          Text(title, style: const TextStyle(fontSize: 13)),
+          const SizedBox(width: 10),
+
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                value.toString(),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              ),
+              Text(title, style: const TextStyle(fontSize: 12)),
+            ],
+          )
         ],
       ),
+    );
+  }
+  Widget _quickActions() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "Quick Actions",
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 12),
+
+        Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.assignment),
+                label: const Text("Assign Task"),
+                onPressed: () =>
+                    _navigateToPage(context, const AssignTaskScreen()),
+              ),
+            ),
+
+            const SizedBox(width: 10),
+
+            Expanded(
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.description),
+                label: const Text("View Reports"),
+                onPressed: () =>
+                    _navigateToPage(context, const ViewReportsPage()),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 

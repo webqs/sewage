@@ -15,6 +15,10 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   bool uploading = false;
 
+  int alertCount = 0;
+  int reportCount = 0;
+  double avgRating = 0;
+
   Future<Map<String, dynamic>?> fetchProfile(String authId) async {
     return await Supabase.instance.client
         .from('profile')
@@ -23,15 +27,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
         .maybeSingle();
   }
 
+  Future<void> loadStats(String authId) async {
+    final alerts = await Supabase.instance.client
+        .from('alerts')
+        .select()
+        .eq('assigned_worker_id', authId);
+
+    final reports = await Supabase.instance.client
+        .from('report')
+        .select();
+
+    final reviews = await Supabase.instance.client
+        .from('performance_reviews')
+        .select()
+        .eq('worker_id', authId);
+
+    double rating = 0;
+    if (reviews.isNotEmpty) {
+      rating = reviews
+          .map((r) => r['rating'] as int)
+          .reduce((a, b) => a + b) /
+          reviews.length;
+    }
+
+    if (!mounted) return;
+
+    setState(() {
+      alertCount = alerts.length;
+      reportCount = reports.length;
+      avgRating = rating;
+    });
+  }
+
   Future<void> uploadProfilePic() async {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
 
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 75,
-    );
+    final pickedFile =
+    await picker.pickImage(source: ImageSource.gallery, imageQuality: 75);
 
     if (pickedFile == null) return;
 
@@ -51,16 +85,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       await Supabase.instance.client
           .from('profile')
-          .update({'avatar_url': publicUrl})
-          .eq('auth_id', user.id);
+          .update({'avatar_url': publicUrl}).eq('auth_id', user.id);
 
       if (mounted) setState(() {});
     } catch (error) {
-      debugPrint('Upload error: $error');
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Failed to upload image')));
-      }
+      debugPrint(error.toString());
     }
 
     if (mounted) setState(() => uploading = false);
@@ -68,6 +97,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> signOut() async {
     await Supabase.instance.client.auth.signOut();
+
     if (!mounted) return;
 
     Navigator.of(context).pushAndRemoveUntil(
@@ -75,6 +105,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           (_) => false,
     );
   }
+
   void confirmLogout() {
     showDialog(
       context: context,
@@ -83,20 +114,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
         content: const Text("Are you sure you want to logout?"),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
             child: const Text("Cancel"),
+            onPressed: () => Navigator.pop(context),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text("Logout"),
             onPressed: () async {
-              Navigator.pop(context); // close dialog
+              Navigator.pop(context);
               await signOut();
             },
-            child: const Text("Logout"),
-          ),
+          )
         ],
       ),
     );
+  }
+
+  Color roleColor(String role) {
+    switch (role) {
+      case "admin":
+        return Colors.purple;
+      case "worker":
+        return Colors.green;
+      case "client":
+        return Colors.blue;
+      default:
+        return Colors.grey;
+    }
   }
 
   @override
@@ -106,14 +150,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
       appBar: AppBar(
-        title: const Text('My Profile'),
+        title: const Text("My Profile"),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: confirmLogout, // ← changed
-          ),
+          IconButton(icon: const Icon(Icons.logout), onPressed: confirmLogout)
         ],
-
       ),
       body: user == null
           ? const Center(child: Text("No user logged in"))
@@ -126,11 +166,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
           final profile = snapshot.data!;
 
+          loadStats(user.id);
+
+          final role = profile['role'] ?? "user";
+
           return SingleChildScrollView(
             padding: const EdgeInsets.all(20),
             child: Column(
               children: [
-                // ---------- Avatar ----------
+                // ================= PROFILE HEADER =================
+
                 Stack(
                   alignment: Alignment.bottomRight,
                   children: [
@@ -156,35 +201,67 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ],
                 ),
 
+                const SizedBox(height: 16),
+
+                Text(
+                  profile['name'] ?? "",
+                  style: const TextStyle(
+                      fontSize: 22, fontWeight: FontWeight.bold),
+                ),
+
+                const SizedBox(height: 6),
+
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: roleColor(role),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    role.toUpperCase(),
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
+
                 const SizedBox(height: 24),
 
-                // ---------- Info Card ----------
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(.1),
-                        blurRadius: 6,
-                      )
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _infoRow("Name", profile['name']),
-                      _infoRow("Email", profile['email']),
-                      _infoRow("Role", profile['role']),
-                      _infoRow("Contact", profile['contact']),
-                    ],
-                  ),
+                // ================= ACCOUNT INFO =================
+
+                _card(
+                  title: "Account Information",
+                  children: [
+                    _infoRow("Email", profile['email']),
+                    _infoRow("Contact", profile['contact']),
+                    _infoRow("Location", profile['location']),
+                  ],
+                ),
+
+                const SizedBox(height: 20),
+
+                // ================= ACTIVITY =================
+
+                _card(
+                  title: "Activity Summary",
+                  children: [
+                    _infoRow("Alerts Assigned", alertCount.toString()),
+                    _infoRow("Reports", reportCount.toString()),
+                    _infoRow(
+                        "Average Rating", avgRating.toStringAsFixed(1)),
+                  ],
                 ),
 
                 const SizedBox(height: 30),
 
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.logout),
+                  label: const Text("Logout"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    minimumSize: const Size(double.infinity, 45),
+                  ),
+                  onPressed: confirmLogout,
+                ),
               ],
             ),
           );
@@ -193,21 +270,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Widget _card({required String title, required List<Widget> children}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(.08), blurRadius: 6)
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title,
+              style:
+              const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+          ...children
+        ],
+      ),
+    );
+  }
+
   Widget _infoRow(String label, String? value) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 10),
       child: Row(
         children: [
           SizedBox(
-            width: 80,
-            child: Text(label,
-                style:
-                const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-          ),
-          Expanded(
-            child: Text(value ?? "—",
-                style: const TextStyle(fontSize: 14)),
-          ),
+              width: 120,
+              child: Text(label,
+                  style: const TextStyle(fontWeight: FontWeight.bold))),
+          Expanded(child: Text(value ?? "—")),
         ],
       ),
     );

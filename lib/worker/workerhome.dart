@@ -118,6 +118,8 @@ class _WorkerHomeScreenState extends State<WorkerHomeScreen> {
                     children: [
                       _buildDashboard(),
                       const SizedBox(height: 20),
+                      _quickActions(),
+                      const SizedBox(height: 20),
                       Expanded(child: _buildGrid()),
                     ],
                   ),
@@ -194,41 +196,83 @@ class _WorkerHomeScreenState extends State<WorkerHomeScreen> {
           mainAxisSpacing: 12,
           childAspectRatio: 1.5,
           children: [
-            _statCard("Total Tasks", totalAlerts, Colors.blue),
-            _statCard("Pending", pendingAlerts, Colors.orange),
-            _statCard("Completed", resolvedAlerts, Colors.green),
-            _statCard("Rating", avgRating.toInt(), Colors.purple),
+            _statCard("Total Tasks", totalAlerts, Icons.task, Colors.blue),
+            _statCard("Pending", pendingAlerts, Icons.warning, Colors.orange),
+            _statCard("Completed", resolvedAlerts, Icons.check_circle, Colors.green),
+            _statCard("Rating", avgRating.toInt(), Icons.star, Colors.purple),
           ],
         ),
       ],
     );
   }
 
-  Widget _statCard(String title, int value, Color color) {
+  Widget _statCard(String title, int value, IconData icon, Color color) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 6),
         ],
       ),
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+      padding: const EdgeInsets.all(14),
+      child: Row(
         children: [
-          Text(
-            value.toString(),
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
+          CircleAvatar(
+            backgroundColor: color.withOpacity(0.15),
+            child: Icon(icon, color: color),
           ),
-          const SizedBox(height: 6),
-          Text(title, style: const TextStyle(fontSize: 13)),
+          const SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                value.toString(),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              ),
+              Text(title, style: const TextStyle(fontSize: 12)),
+            ],
+          )
         ],
       ),
+    );
+  }
+  Widget _quickActions() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "Quick Actions",
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.task),
+                label: const Text("My Tasks"),
+                onPressed: () =>
+                    _navigateToPage(context, const WorkerTaskScreen()),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.report),
+                label: const Text("Send Report"),
+                onPressed: () =>
+                    _navigateToPage(context, const SendReportScreen()),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
